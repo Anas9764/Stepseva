@@ -13,6 +13,24 @@ const settingsSchema = new mongoose.Schema(
     storePhone: {
       type: String,
     },
+    storeWhatsApp: {
+      type: String,
+      default: '918261029700', // Default WhatsApp number
+    },
+    supplierContact: {
+      phone: {
+        type: String,
+        default: '+91-8261029700',
+      },
+      whatsapp: {
+        type: String,
+        default: '918261029700',
+      },
+      email: {
+        type: String,
+        default: 'contact@stepseva.com',
+      },
+    },
     storeAddress: {
       type: String,
     },

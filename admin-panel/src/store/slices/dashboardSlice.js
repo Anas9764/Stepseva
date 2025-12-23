@@ -7,9 +7,19 @@ const initialState = {
     totalUsers: 0,
     totalProducts: 0,
     totalOrders: 0,
+    // B2B Stats
+    totalLeads: 0,
+    newLeads: 0,
+    totalBusinessAccounts: 0,
+    activeBusinessAccounts: 0,
+    pendingBusinessAccounts: 0,
+    b2bRevenue: 0,
   },
   salesData: [],
   recentOrders: [],
+  recentLeads: [],
+  upcomingFollowups: [],
+  recentActivities: [],
   loading: false,
   error: null,
 };
@@ -46,6 +56,42 @@ export const fetchRecentOrders = createAsyncThunk(
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch recent orders');
+    }
+  }
+);
+
+export const fetchRecentLeads = createAsyncThunk(
+  'dashboard/fetchRecentLeads',
+  async (limit, { rejectWithValue }) => {
+    try {
+      const response = await dashboardService.getRecentLeads(limit);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch recent leads');
+    }
+  }
+);
+
+export const fetchUpcomingFollowups = createAsyncThunk(
+  'dashboard/fetchUpcomingFollowups',
+  async (limit, { rejectWithValue }) => {
+    try {
+      const response = await dashboardService.getUpcomingFollowups(limit);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch upcoming follow-ups');
+    }
+  }
+);
+
+export const fetchRecentActivities = createAsyncThunk(
+  'dashboard/fetchRecentActivities',
+  async (limit, { rejectWithValue }) => {
+    try {
+      const response = await dashboardService.getRecentActivities(limit);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch recent activities');
     }
   }
 );
@@ -96,6 +142,18 @@ const dashboardSlice = createSlice({
       .addCase(fetchRecentOrders.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+      // Fetch Recent Leads
+      .addCase(fetchRecentLeads.fulfilled, (state, action) => {
+        state.recentLeads = action.payload;
+      })
+      // Fetch Upcoming Follow-ups
+      .addCase(fetchUpcomingFollowups.fulfilled, (state, action) => {
+        state.upcomingFollowups = action.payload;
+      })
+      // Fetch Recent Activities
+      .addCase(fetchRecentActivities.fulfilled, (state, action) => {
+        state.recentActivities = action.payload;
       });
   },
 });

@@ -9,6 +9,7 @@
     "seed": "node seedProducts.js",
     "seed:products": "node seedProducts.js",
     "seed:reviews": "node seedReviewsAndQnA.js",
+    "seed:b2b-leads": "node seedB2BLeadsAndAccounts.js",
     "seed:all": "node seedAll.js",
     "seed:banners": "node seedBanners.js",
     "update:banners": "node updateBanners.js",

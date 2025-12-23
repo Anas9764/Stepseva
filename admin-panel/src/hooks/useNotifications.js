@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { reviewService } from '../services/reviewService';
 import { questionService } from '../services/questionService';
 import orderService from '../services/orderService';
+import { leadService } from '../services/leadService';
 import toast from 'react-hot-toast';
 
 const useNotifications = () => {
@@ -9,13 +10,14 @@ const useNotifications = () => {
     newReviews: 0,
     newQuestions: 0,
     newOrders: 0,
+    newLeads: 0,
     pendingReviews: 0,
     pendingOrders: 0,
   });
   
   const [notificationItems, setNotificationItems] = useState([]);
   const [lastCheckTime, setLastCheckTime] = useState(Date.now());
-  const previousCounts = useRef({ reviews: 0, questions: 0, orders: 0 });
+  const previousCounts = useRef({ reviews: 0, questions: 0, orders: 0, leads: 0 });
   const processedIds = useRef(new Set());
   const notificationItemsRef = useRef([]);
   
@@ -27,15 +29,17 @@ const useNotifications = () => {
     const unreadOrders = notificationItems.filter(item => item.type === 'order' && !item.read).length;
     const unreadQuestions = notificationItems.filter(item => item.type === 'question' && !item.read).length;
     const unreadReviews = notificationItems.filter(item => item.type === 'review' && !item.read).length;
+    const unreadLeads = notificationItems.filter(item => item.type === 'lead' && !item.read).length;
     
     setNotifications(prev => {
       // Only update if counts actually changed to prevent infinite loops
-      if (prev.newOrders !== unreadOrders || prev.newQuestions !== unreadQuestions || prev.newReviews !== unreadReviews) {
+      if (prev.newOrders !== unreadOrders || prev.newQuestions !== unreadQuestions || prev.newReviews !== unreadReviews || prev.newLeads !== unreadLeads) {
         return {
           ...prev,
           newOrders: unreadOrders,
           newQuestions: unreadQuestions,
           newReviews: unreadReviews,
+          newLeads: unreadLeads,
         };
       }
       return prev;
@@ -65,12 +69,14 @@ const useNotifications = () => {
         const unreadOrders = items.filter(item => item.type === 'order' && !item.read).length;
         const unreadQuestions = items.filter(item => item.type === 'question' && !item.read).length;
         const unreadReviews = items.filter(item => item.type === 'review' && !item.read).length;
+        const unreadLeads = items.filter(item => item.type === 'lead' && !item.read).length;
         
         setNotifications(prev => ({
           ...prev,
           newOrders: unreadOrders,
           newQuestions: unreadQuestions,
           newReviews: unreadReviews,
+          newLeads: unreadLeads,
         }));
       }
     } catch (error) {
@@ -279,6 +285,54 @@ const useNotifications = () => {
         previousCounts.current.orders = newOrders;
       }
 
+      // Process leads
+      try {
+        const leadsResponse = await leadService.getAllLeads({
+          status: 'new',
+          limit: 100,
+        });
+
+        if (leadsResponse?.success) {
+          const newLeads = leadsResponse.data?.leads || [];
+
+          // Add notifications for new leads
+          newLeads.forEach((lead) => {
+            const itemKey = `lead-${lead._id}`;
+            const existsInItems = notificationItemsRef.current.some(
+              item => item.type === 'lead' && item.itemId === lead._id
+            );
+
+            if (!existsInItems && !processedIds.current.has(itemKey)) {
+              addNotificationItem(
+                'lead',
+                'New B2B Inquiry',
+                `${lead.buyerName} - ${lead.productName} (${lead.quantityRequired} units)`,
+                lead._id
+              );
+              processedIds.current.add(itemKey);
+            }
+          });
+
+          // Show toast for new leads
+          const lastSeenLeads = parseInt(localStorage.getItem('lastSeenLeadsCount') || '0');
+          const currentNewLeads = newLeads.length;
+          
+          if (currentNewLeads > lastSeenLeads && previousCounts.current.leads >= 0) {
+            const addedLeads = currentNewLeads - previousCounts.current.leads;
+            if (addedLeads > 0) {
+              toast.success(`${addedLeads} new B2B inquiry${addedLeads > 1 ? 'ies' : ''} received`, {
+                icon: '💼',
+                duration: 4000,
+              });
+            }
+          }
+
+          previousCounts.current.leads = currentNewLeads;
+        }
+      } catch (error) {
+        console.error('Error fetching leads:', error);
+      }
+
         setLastCheckTime(Date.now());
     } catch (error) {
       console.error('Error checking notifications:', error);
@@ -301,6 +355,7 @@ const useNotifications = () => {
           if (item.type === 'order') counts.newOrders = Math.max(0, counts.newOrders - 1);
           if (item.type === 'question') counts.newQuestions = Math.max(0, counts.newQuestions - 1);
           if (item.type === 'review') counts.newReviews = Math.max(0, counts.newReviews - 1);
+          if (item.type === 'lead') counts.newLeads = Math.max(0, counts.newLeads - 1);
           return counts;
         });
       }
@@ -322,6 +377,7 @@ const useNotifications = () => {
       newOrders: 0,
       newQuestions: 0,
       newReviews: 0,
+      newLeads: 0,
     }));
   }, [saveNotificationsToStorage]);
 
@@ -391,6 +447,28 @@ const useNotifications = () => {
     }
   }, []);
 
+  // Mark leads as seen
+  const markLeadsAsSeen = useCallback(async () => {
+    try {
+      const leadsResponse = await leadService.getAllLeads({
+        status: 'new',
+        limit: 100,
+      });
+
+      if (leadsResponse?.success) {
+        const newLeads = leadsResponse.data?.leads || [];
+        localStorage.setItem('lastSeenLeadsCount', newLeads.length.toString());
+      } else {
+        // If response shape is different, just clear the counter
+        localStorage.setItem('lastSeenLeadsCount', '0');
+      }
+
+      setNotifications(prev => ({ ...prev, newLeads: 0 }));
+    } catch (error) {
+      console.error('Error marking leads as seen:', error);
+    }
+  }, []);
+
   // Initial load and check
   useEffect(() => {
     loadNotificationsFromStorage();
@@ -399,6 +477,9 @@ const useNotifications = () => {
     // Set initial last seen counts if they don't exist
     if (localStorage.getItem('lastSeenOrdersCount') === null) {
       localStorage.setItem('lastSeenOrdersCount', '0');
+    }
+    if (localStorage.getItem('lastSeenLeadsCount') === null) {
+      localStorage.setItem('lastSeenLeadsCount', '0');
     }
   }, [loadNotificationsFromStorage, checkForNewItems]);
 
@@ -433,6 +514,7 @@ const useNotifications = () => {
     markReviewsAsSeen,
     markQuestionsAsSeen,
     markOrdersAsSeen,
+    markLeadsAsSeen,
     lastCheckTime,
   };
 };

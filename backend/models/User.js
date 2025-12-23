@@ -23,8 +23,17 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['user', 'admin'],
+      enum: ['user', 'admin', 'retailer', 'wholesaler', 'business_customer'],
       default: 'user',
+    },
+    // B2B specific fields
+    isBusinessAccount: {
+      type: Boolean,
+      default: false,
+    },
+    businessAccountId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'BusinessAccount',
     },
   },
   {

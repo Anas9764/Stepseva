@@ -14,14 +14,14 @@ const Card = ({ title, value, icon: Icon, color = 'lavender', trend }) => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -5 }}
-      className="bg-white rounded-lg shadow-md p-6 border border-gray-100"
+      className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-100 dark:border-gray-700"
     >
       <div className="flex items-center justify-between">
         <div className="flex-1">
-          <p className="text-sm text-gray-500 font-medium mb-1">{title}</p>
-          <h3 className="text-3xl font-bold text-gray-800">{value}</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mb-1">{title}</p>
+          <h3 className="text-3xl font-bold text-gray-800 dark:text-white">{value}</h3>
           {trend && (
-            <p className={`text-sm mt-2 ${trend > 0 ? 'text-green-600' : 'text-red-600'}`}>
+            <p className={`text-sm mt-2 ${trend > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
               {trend > 0 ? '↑' : '↓'} {Math.abs(trend)}% from last month
             </p>
           )}

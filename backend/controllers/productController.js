@@ -1,7 +1,10 @@
 const Product = require('../models/Product');
 const Category = require('../models/Category');
+const BusinessAccount = require('../models/BusinessAccount');
 const mongoose = require('mongoose');
 const cloudinary = require('../utils/cloudinary');
+const { getPricingInfo } = require('../utils/b2bPricing');
+const { logActivity } = require('../middleware/activityLogger');
 
 // @desc    Get all products
 // @route   GET /api/products
@@ -106,6 +109,51 @@ exports.getAllProducts = async (req, res, next) => {
     // Filter by footwear type
     if (footwearType) {
       query.footwearType = footwearType.toLowerCase();
+    }
+
+    // Filter by product type based on user type (B2B vs B2C)
+    // This ensures B2C users don't see B2B-only products and vice versa
+    const productTypeFilter = req.query.productType; // Allow manual override via query param
+    if (!productTypeFilter) {
+      // Check if user is a B2B user
+      const isB2BUser = req.user && req.user.isBusinessAccount && req.user.businessAccountId;
+      
+      if (isB2BUser) {
+        // Check if user has active business account
+        try {
+          const BusinessAccount = require('../models/BusinessAccount');
+          const businessAccount = await BusinessAccount.findById(req.user.businessAccountId)
+            .select('status')
+            .lean();
+          if (businessAccount && businessAccount.status === 'active') {
+            // B2B users see B2B and 'both' products
+            query.productType = { $in: ['b2b', 'both'] };
+          } else {
+            // Inactive business account, show B2C products
+            query.productType = { $in: ['b2c', 'both'] };
+          }
+        } catch (err) {
+          // Error checking business account, default to B2C
+          query.productType = { $in: ['b2c', 'both'] };
+        }
+      } else {
+        // Regular users (B2C) or unauthenticated users
+        // Check if request is from Business Frontend via header
+        const isBusinessFrontend = req.headers['x-frontend-type'] === 'business' ||
+                                   req.headers.referer?.includes('business') || 
+                                   req.headers.origin?.includes('business');
+        
+        if (isBusinessFrontend) {
+          // Business Frontend (even unauthenticated) can see 'both' and 'b2b' products
+          query.productType = { $in: ['b2b', 'both'] };
+        } else {
+          // Regular frontend sees B2C and 'both' products
+          query.productType = { $in: ['b2c', 'both'] };
+        }
+      }
+    } else {
+      // Manual filter specified
+      query.productType = productTypeFilter;
     }
 
     // Check if we need to filter by rating or discount (these require extra queries)
@@ -225,7 +273,26 @@ exports.getAllProducts = async (req, res, next) => {
       }
     }
 
+    // Get business account if user is authenticated
+    let businessAccount = null;
+    const isB2BUser = req.user && req.user.isBusinessAccount && req.user.businessAccountId;
+    if (isB2BUser) {
+      try {
+        businessAccount = await BusinessAccount.findById(req.user.businessAccountId)
+          .select('pricingTier status')
+          .lean();
+        // Only use if account is active
+        if (!businessAccount || businessAccount.status !== 'active') {
+          businessAccount = null;
+        }
+      } catch (err) {
+        console.error('Error fetching business account:', err);
+        businessAccount = null;
+      }
+    }
+
     // Filter out products with null categories and format
+    // Note: Product type filtering is already done at database query level
     let validProducts = (products || [])
       .filter(p => p && p.category !== null && p.category !== undefined)
       .map(p => {
@@ -237,13 +304,33 @@ exports.getAllProducts = async (req, res, next) => {
           sizeStockObj = p.sizeStock;
         }
         
-        return {
+        // Get B2B pricing info if business account exists AND product supports B2B
+        const productType = p.productType || 'b2c';
+        const supportsB2B = productType === 'b2b' || productType === 'both';
+        const pricingInfo = (businessAccount && supportsB2B && p.bulkPricingEnabled) 
+          ? getPricingInfo(p, businessAccount) 
+          : null;
+        
+        const productData = {
           ...p,
           gender: p.gender || 'unisex',
           footwearType: p.footwearType || 'other',
           sizes: Array.isArray(p.sizes) ? p.sizes : [],
           sizeStock: sizeStockObj,
+          productType: productType, // Ensure productType is included
         };
+
+        // Add B2B pricing information if available (only for B2B users and B2B-enabled products)
+        if (pricingInfo && pricingInfo.tierPrice < p.price) {
+          productData.b2bPricing = {
+            standardPrice: pricingInfo.standardPrice,
+            tierPrice: pricingInfo.tierPrice,
+            pricingTier: pricingInfo.pricingTier,
+            discount: Math.round(((pricingInfo.standardPrice - pricingInfo.tierPrice) / pricingInfo.standardPrice) * 100),
+          };
+        }
+
+        return productData;
       });
 
     const totalPages = Math.ceil(total / limitNum);
@@ -308,6 +395,22 @@ exports.getProductById = async (req, res, next) => {
     }
     product.sizeStock = sizeStockObj;
 
+    // Get business account if user is authenticated
+    let businessAccount = null;
+    if (req.user && req.user.isBusinessAccount && req.user.businessAccountId) {
+      try {
+        businessAccount = await BusinessAccount.findById(req.user.businessAccountId)
+          .select('pricingTier status')
+          .lean();
+        if (!businessAccount || businessAccount.status !== 'active') {
+          businessAccount = null;
+        }
+      } catch (err) {
+        console.error('Error fetching business account:', err);
+        businessAccount = null;
+      }
+    }
+
     // Get variants if this product has variants or is a variant
     let variants = [];
     if (product.isVariant && product.parentProduct) {
@@ -348,6 +451,21 @@ exports.getProductById = async (req, res, next) => {
     }
 
     product.variants = variants;
+
+    // Add B2B pricing information if available
+    if (businessAccount) {
+      const pricingInfo = getPricingInfo(product, businessAccount);
+      if (pricingInfo.tierPrice < product.price) {
+        product.b2bPricing = {
+          standardPrice: pricingInfo.standardPrice,
+          tierPrice: pricingInfo.tierPrice,
+          pricingTier: pricingInfo.pricingTier,
+          discount: Math.round(((pricingInfo.standardPrice - pricingInfo.tierPrice) / pricingInfo.standardPrice) * 100),
+          quantityPricing: pricingInfo.quantityPricing,
+          moq: pricingInfo.moq,
+        };
+      }
+    }
 
     res.status(200).json({
       success: true,
@@ -442,6 +560,17 @@ exports.createProduct = async (req, res, next) => {
     // Populate category before sending response
     await product.populate('category', 'name description');
 
+    // Log activity
+    if (req.user && req.user.role === 'admin') {
+      await logActivity(req, {
+        action: 'create',
+        entityType: 'product',
+        entityId: product._id,
+        entityName: product.name,
+        description: `Created product: ${product.name}`,
+      });
+    }
+
     res.status(201).json({
       success: true,
       message: 'Product created successfully',
@@ -513,10 +642,29 @@ exports.updateProduct = async (req, res, next) => {
       updateData.isVariant = updateData.isVariant === true;
     }
 
+    const oldProduct = { ...product.toObject() };
     product = await Product.findByIdAndUpdate(req.params.id, updateData, {
       new: true,
       runValidators: true,
     }).populate('category', 'name description');
+
+    // Log activity
+    if (req.user && req.user.role === 'admin') {
+      const changes = {};
+      Object.keys(updateData).forEach(key => {
+        if (oldProduct[key] !== product[key]) {
+          changes[key] = { from: oldProduct[key], to: product[key] };
+        }
+      });
+      await logActivity(req, {
+        action: 'update',
+        entityType: 'product',
+        entityId: product._id,
+        entityName: product.name,
+        description: `Updated product: ${product.name}`,
+        changes: Object.keys(changes).length > 0 ? changes : null,
+      });
+    }
 
     res.status(200).json({
       success: true,
@@ -549,7 +697,19 @@ exports.deleteProduct = async (req, res, next) => {
       });
     }
 
+    const productName = product.name;
     await product.deleteOne();
+
+    // Log activity
+    if (req.user && req.user.role === 'admin') {
+      await logActivity(req, {
+        action: 'delete',
+        entityType: 'product',
+        entityId: req.params.id,
+        entityName: productName,
+        description: `Deleted product: ${productName}`,
+      });
+    }
 
     res.status(200).json({
       success: true,

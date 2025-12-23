@@ -31,9 +31,13 @@ const Reviews = () => {
 
   useEffect(() => {
     fetchReviews();
-    // Mark reviews as seen when page loads
+  }, [currentPage, filters]);
+
+  // Mark reviews as seen when page loads (separate effect to avoid dependency issues)
+  useEffect(() => {
     markReviewsAsSeen();
-  }, [currentPage, filters, markReviewsAsSeen]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
   // Mark review notifications as read when viewing reviews page (separate effect to avoid loops)
   useEffect(() => {
@@ -326,7 +330,7 @@ const Reviews = () => {
   }
 
   return (
-    <div className="space-y-6 max-w-full">
+    <div className="space-y-6 w-full">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

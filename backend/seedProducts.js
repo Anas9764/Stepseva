@@ -30,6 +30,7 @@ const dummyProducts = [
     sizes: ['1', '2', '3', '4', '5', '6', '7'],
     stock: 50,
     featured: true,
+    productType: 'b2c', // B2C product
     image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500',
     images: [
       'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500',
@@ -612,6 +613,7 @@ const seedProducts = async () => {
         sizeStock,
         isActive: true,
         status: 'active',
+        productType: productData.productType || 'b2c', // Default to B2C if not specified
       });
 
       createdProducts.push(product);

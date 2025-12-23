@@ -7,6 +7,7 @@ import userReducer from './slices/userSlice';
 import bannerReducer from './slices/bannerSlice';
 import couponReducer from './slices/couponSlice';
 import dashboardReducer from './slices/dashboardSlice';
+import leadsReducer from './slices/leadsSlice';
 
 export const store = configureStore({
   reducer: {
@@ -18,6 +19,7 @@ export const store = configureStore({
     banners: bannerReducer,
     coupons: couponReducer,
     dashboard: dashboardReducer,
+    leads: leadsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

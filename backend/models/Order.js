@@ -64,9 +64,55 @@ const orderSchema = new mongoose.Schema(
     },
     paymentType: {
       type: String,
-      enum: ['cod', 'online'],
+      enum: ['cod', 'online', 'credit', 'invoice'],
       required: true,
     },
+    // B2B Specific Fields
+    isB2BOrder: {
+      type: Boolean,
+      default: false,
+    },
+    businessAccountId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'BusinessAccount',
+    },
+    purchaseOrderNumber: {
+      type: String,
+      trim: true,
+    },
+    // Order Approval Workflow
+    requiresApproval: {
+      type: Boolean,
+      default: false,
+    },
+    approvalStatus: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected'],
+      default: 'pending',
+    },
+    approvedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    approvedAt: Date,
+    rejectionReason: String,
+    // Credit Terms
+    paymentTerms: {
+      type: String,
+      enum: ['net15', 'net30', 'net45', 'net60', 'cod', 'prepaid'],
+    },
+    dueDate: Date,
+    // Invoice
+    invoiceNumber: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+    invoiceGenerated: {
+      type: Boolean,
+      default: false,
+    },
+    invoiceGeneratedAt: Date,
     orderId: {
       type: String,
       unique: true,

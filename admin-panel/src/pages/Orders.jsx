@@ -1,7 +1,8 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchOrders, updateOrderStatus } from '../store/slices/orderSlice';
 import Table from '../components/Table';
+import BulkActions from '../components/BulkActions';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
 import SearchInput from '../components/SearchInput';
@@ -11,6 +12,8 @@ import { Eye, Package, Filter, X, Download, Calendar, Plus, FileText } from 'luc
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import useNotifications from '../hooks/useNotifications';
+import * as XLSX from 'xlsx';
+import { exportOrdersToPDF } from '../utils/pdfExport';
 
 const Orders = () => {
   const dispatch = useDispatch();
@@ -31,6 +34,8 @@ const Orders = () => {
   const [orderNote, setOrderNote] = useState('');
   const [showTrackingForm, setShowTrackingForm] = useState(false);
   const [showNoteForm, setShowNoteForm] = useState(false);
+  const [selectedOrders, setSelectedOrders] = useState([]);
+  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   const itemsPerPage = 10;
 
   // Helper function to get API URL
@@ -226,6 +231,97 @@ const Orders = () => {
       toast.error('Failed to add note');
     }
   };
+
+  // Bulk operations
+  const handleSelectionChange = useCallback((selected, count) => {
+    setSelectedOrders(selected);
+  }, []);
+
+  const handleBulkStatusUpdate = useCallback(async (status) => {
+    if (selectedOrders.length === 0) return;
+    
+    setIsBulkProcessing(true);
+    try {
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const order of selectedOrders) {
+        try {
+          const result = await dispatch(updateOrderStatus({ id: order._id, status }));
+          if (result.type === 'orders/updateStatus/fulfilled') {
+            successCount++;
+          } else {
+            failCount++;
+          }
+        } catch (error) {
+          failCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success(`Successfully updated ${successCount} order(s) to ${status}`);
+      }
+      if (failCount > 0) {
+        toast.error(`Failed to update ${failCount} order(s)`);
+      }
+      
+      setSelectedOrders([]);
+      dispatch(fetchOrders());
+    } catch (error) {
+      toast.error('Bulk status update failed');
+    } finally {
+      setIsBulkProcessing(false);
+    }
+  }, [selectedOrders, dispatch]);
+
+  const handleBulkExport = useCallback(() => {
+    if (selectedOrders.length === 0) {
+      toast.error('No orders selected');
+      return;
+    }
+
+    try {
+      const exportData = selectedOrders.map(order => ({
+        'Order ID': order.orderId || order._id?.slice(-6).toUpperCase(),
+        'Customer Name': order.user?.name || 'Guest',
+        'Customer Email': order.user?.email || order.email || 'N/A',
+        'Phone': order.phone || 'N/A',
+        'Total Amount': order.totalAmount || 0,
+        'Status': order.status || 'Pending',
+        'Payment Status': order.paymentStatus || 'Pending',
+        'Payment Type': order.paymentType === 'cod' ? 'COD' : 'Online',
+        'Items Count': order.items?.length || 0,
+        'Order Date': order.createdAt ? new Date(order.createdAt).toLocaleDateString() : 'N/A',
+        'Shipping Address': order.shippingAddress ? 
+          `${order.shippingAddress.address}, ${order.shippingAddress.city}, ${order.shippingAddress.state}` : 'N/A',
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Orders');
+      XLSX.writeFile(wb, `orders-export-${Date.now()}.xlsx`);
+      
+      toast.success(`Exported ${selectedOrders.length} order(s) to Excel`);
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error('Failed to export orders');
+    }
+  }, [selectedOrders]);
+
+  const handleBulkExportPDF = useCallback(() => {
+    if (selectedOrders.length === 0) {
+      toast.error('No orders selected');
+      return;
+    }
+
+    try {
+      exportOrdersToPDF(selectedOrders);
+      toast.success(`Exported ${selectedOrders.length} order(s) to PDF`);
+    } catch (error) {
+      console.error('PDF export error:', error);
+      toast.error('Failed to export orders to PDF');
+    }
+  }, [selectedOrders]);
 
   const columns = [
     {
@@ -524,10 +620,32 @@ const Orders = () => {
         </div>
       </div>
 
+      {/* Bulk Actions */}
+      <BulkActions
+        selectedCount={selectedOrders.length}
+        onBulkStatusUpdate={handleBulkStatusUpdate}
+        onBulkExport={handleBulkExport}
+        onBulkExportPDF={handleBulkExportPDF}
+        showDelete={false}
+        showStatusUpdate={true}
+        showExport={true}
+        showExportPDF={true}
+        availableStatuses={[
+          { value: 'Pending', label: 'Pending' },
+          { value: 'Processing', label: 'Processing' },
+          { value: 'Shipped', label: 'Shipped' },
+          { value: 'Delivered', label: 'Delivered' },
+          { value: 'Cancelled', label: 'Cancelled' },
+        ]}
+      />
+
       {/* Orders Table */}
       <Table
         columns={columns}
         data={filteredOrders}
+        enableBulkSelection={true}
+        onSelectionChange={handleSelectionChange}
+        getRowId={(row) => row._id}
         actions={(row) => (
           <Button
             size="sm"

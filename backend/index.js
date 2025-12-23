@@ -50,6 +50,9 @@ const wishlistRoutes = require('./routes/wishlistRoutes');
 const cartRoutes = require('./routes/cartRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
 const questionRoutes = require('./routes/questionRoutes');
+const businessAccountRoutes = require('./routes/businessAccountRoutes');
+const leadRoutes = require('./routes/leadRoutes');
+const activityLogRoutes = require('./routes/activityLogRoutes');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -65,11 +68,13 @@ app.use(helmet({
 
 // CORS Configuration
 const allowedOrigins = [
-  'http://localhost:5173',
-  'http://localhost:5174',
+  'http://localhost:5173', // Regular Frontend
+  'http://localhost:5174', // Admin Panel
+  'http://localhost:5175', // Business Frontend
   'http://localhost:3000',
   process.env.CLIENT_URL,
-  process.env.ADMIN_URL
+  process.env.ADMIN_URL,
+  process.env.BUSINESS_FRONTEND_URL
 ]
   .filter(Boolean) // Remove undefined values
   .map(url => url.trim().replace(/\/$/, '')); // Remove trailing slashes and whitespace
@@ -88,6 +93,13 @@ app.use(cors({
     // Normalize origin (remove trailing slash)
     const normalizedOrigin = origin.trim().replace(/\/$/, '');
     
+    // In development, allow all localhost ports for flexibility
+    if (process.env.NODE_ENV !== 'production') {
+      if (normalizedOrigin.startsWith('http://localhost:') || normalizedOrigin.startsWith('http://127.0.0.1:')) {
+        return callback(null, true);
+      }
+    }
+    
     // Check for exact match
     const isAllowed = allowedOrigins.some(allowed => {
       const normalizedAllowed = allowed.trim().replace(/\/$/, '');
@@ -104,7 +116,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Frontend-Type'],
   exposedHeaders: ['Authorization'],
 }));
 app.use(express.json());
@@ -118,6 +130,9 @@ if (!process.env.MONGO_URI) {
   console.error('❌ MONGO_URI is not set in environment variables!');
   process.exit(1);
 }
+
+// Configure mongoose options
+mongoose.set('strictPopulate', false);
 
 mongoose
   .connect(process.env.MONGO_URI)
@@ -165,6 +180,9 @@ app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/questions', questionRoutes);
+app.use('/api/business-accounts', businessAccountRoutes);
+app.use('/api/leads', leadRoutes);
+app.use('/api/activity-logs', activityLogRoutes);
 app.use('/api', paymentRoutes);
 app.use('/api/contact', contactRoutes);
 

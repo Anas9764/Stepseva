@@ -1,6 +1,9 @@
 const User = require('../models/User');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
+const Lead = require('../models/Lead');
+const BusinessAccount = require('../models/BusinessAccount');
+const ActivityLog = require('../models/ActivityLog');
 
 // @desc    Get dashboard statistics
 // @route   GET /api/dashboard/stats
@@ -29,6 +32,30 @@ exports.getStats = async (req, res, next) => {
 
     const totalRevenue = revenueData.length > 0 ? revenueData[0].totalRevenue : 0;
 
+    // B2B Statistics
+    const totalLeads = await Lead.countDocuments();
+    const newLeads = await Lead.countDocuments({ status: 'new' });
+    const totalBusinessAccounts = await BusinessAccount.countDocuments();
+    const activeBusinessAccounts = await BusinessAccount.countDocuments({ status: 'active' });
+    const pendingBusinessAccounts = await BusinessAccount.countDocuments({ status: 'pending' });
+    
+    // B2B Revenue (orders with isB2BOrder flag)
+    const b2bRevenueData = await Order.aggregate([
+      {
+        $match: {
+          paymentStatus: 'Paid',
+          isB2BOrder: true,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: '$totalAmount' },
+        },
+      },
+    ]);
+    const b2bRevenue = b2bRevenueData.length > 0 ? b2bRevenueData[0].totalRevenue : 0;
+
     res.status(200).json({
       success: true,
       data: {
@@ -36,6 +63,13 @@ exports.getStats = async (req, res, next) => {
         totalUsers,
         totalProducts,
         totalOrders,
+        // B2B Stats
+        totalLeads,
+        newLeads,
+        totalBusinessAccounts,
+        activeBusinessAccounts,
+        pendingBusinessAccounts,
+        b2bRevenue: Math.round(b2bRevenue * 100) / 100,
       },
     });
   } catch (error) {
@@ -118,14 +152,90 @@ exports.getRecentOrders = async (req, res, next) => {
     const { limit = 5 } = req.query;
 
     const orders = await Order.find()
-      .populate('user', 'name email')
-      .populate('items.product', 'name image')
+      .populate('userId', 'name email')
+      .populate('products.productId', 'name image')
       .sort({ createdAt: -1 })
       .limit(parseInt(limit));
 
     res.status(200).json({
       success: true,
       data: orders,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get recent B2B leads
+// @route   GET /api/dashboard/recent-leads
+// @access  Private/Admin
+exports.getRecentLeads = async (req, res, next) => {
+  try {
+    const { limit = 5 } = req.query;
+
+    const leads = await Lead.find()
+      .populate('productId', 'name image')
+      .populate('businessAccountId', 'companyName')
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit));
+
+    res.status(200).json({
+      success: true,
+      data: leads,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get upcoming follow-ups
+// @route   GET /api/dashboard/upcoming-followups
+// @access  Private/Admin
+exports.getUpcomingFollowups = async (req, res, next) => {
+  try {
+    const { limit = 5 } = req.query;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 7);
+
+    const followups = await Lead.find({
+      followUpDate: {
+        $gte: today,
+        $lte: nextWeek,
+      },
+      status: { $in: ['new', 'contacted', 'interested', 'quoted', 'negotiating'] },
+    })
+      .populate('productId', 'name image')
+      .populate('businessAccountId', 'companyName')
+      .sort({ followUpDate: 1 })
+      .limit(parseInt(limit));
+
+    res.status(200).json({
+      success: true,
+      data: followups,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get recent activity logs
+// @route   GET /api/dashboard/recent-activities
+// @access  Private/Admin
+exports.getRecentActivities = async (req, res, next) => {
+  try {
+    const { limit = 10 } = req.query;
+
+    const activities = await ActivityLog.find()
+      .populate('userId', 'name email')
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit))
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      data: activities,
     });
   } catch (error) {
     next(error);

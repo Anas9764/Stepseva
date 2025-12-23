@@ -88,10 +88,10 @@ const Pagination = ({
     <div className={`flex flex-col ${alignClasses[align]} gap-4 ${className}`}>
       {/* Info Text */}
       {showInfo && (
-        <p className={`text-sm text-gray-600 ${align === 'right' ? 'text-right' : align === 'left' ? 'text-left' : 'text-center'}`}>
-          Showing <span className="font-semibold text-gray-800">{startIndex + 1}</span> to{' '}
-          <span className="font-semibold text-gray-800">{endIndex}</span> of{' '}
-          <span className="font-semibold text-gray-800">{totalItems}</span> results
+        <p className={`text-sm text-gray-600 dark:text-gray-400 ${align === 'right' ? 'text-right' : align === 'left' ? 'text-left' : 'text-center'}`}>
+          Showing <span className="font-semibold text-gray-800 dark:text-white">{startIndex + 1}</span> to{' '}
+          <span className="font-semibold text-gray-800 dark:text-white">{endIndex}</span> of{' '}
+          <span className="font-semibold text-gray-800 dark:text-white">{totalItems}</span> results
         </p>
       )}
 
@@ -103,8 +103,8 @@ const Pagination = ({
           disabled={currentPage === 1}
           className={`px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-1 ${
             currentPage === 1
-              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-              : 'bg-white border-2 border-primary text-primary hover:bg-primary hover:text-white shadow-sm'
+              ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+              : 'bg-white dark:bg-gray-800 border-2 border-primary text-primary dark:text-primary-300 hover:bg-primary hover:text-white shadow-sm dark:border-gray-600'
           }`}
           aria-label="Previous page"
         >
@@ -147,8 +147,8 @@ const Pagination = ({
           disabled={currentPage === totalPages}
           className={`px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-1 ${
             currentPage === totalPages
-              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-              : 'bg-white border-2 border-primary text-primary hover:bg-primary hover:text-white shadow-sm'
+              ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+              : 'bg-white dark:bg-gray-800 border-2 border-primary text-primary dark:text-primary-300 hover:bg-primary hover:text-white shadow-sm dark:border-gray-600'
           }`}
           aria-label="Next page"
         >

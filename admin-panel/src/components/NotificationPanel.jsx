@@ -8,7 +8,8 @@ import {
   Star, 
   CheckCircle2,
   Clock,
-  Bell
+  Bell,
+  Briefcase,
 } from 'lucide-react';
 import useNotifications from '../hooks/useNotifications';
 
@@ -21,10 +22,11 @@ const NotificationPanel = ({ isOpen, onClose }) => {
     markAllAsRead,
     markOrdersAsSeen,
     markQuestionsAsSeen,
-    markReviewsAsSeen
+    markReviewsAsSeen,
+    markLeadsAsSeen,
   } = useNotifications();
 
-  const [activeTab, setActiveTab] = useState('all'); // 'all', 'orders', 'questions', 'reviews'
+  const [activeTab, setActiveTab] = useState('all'); // 'all', 'orders', 'questions', 'reviews', 'leads'
 
   // Map tab names to notification types (tabs are plural, types are singular)
   const getTypeForTab = (tab) => {
@@ -33,6 +35,7 @@ const NotificationPanel = ({ isOpen, onClose }) => {
       'orders': 'order',
       'questions': 'question',
       'reviews': 'review',
+      'leads': 'lead',
     };
     return tabToTypeMap[tab] || null;
   };
@@ -83,6 +86,10 @@ const NotificationPanel = ({ isOpen, onClose }) => {
         markReviewsAsSeen();
         navigate('/reviews');
         break;
+      case 'lead':
+        markLeadsAsSeen();
+        navigate('/leads');
+        break;
       default:
         break;
     }
@@ -97,6 +104,8 @@ const NotificationPanel = ({ isOpen, onClose }) => {
         return <MessageSquare className="w-5 h-5 text-blue-600" />;
       case 'review':
         return <Star className="w-5 h-5 text-yellow-600" />;
+      case 'lead':
+        return <Briefcase className="w-5 h-5 text-amber-600" />;
       default:
         return <Bell className="w-5 h-5 text-gray-600" />;
     }
@@ -110,6 +119,8 @@ const NotificationPanel = ({ isOpen, onClose }) => {
         return 'bg-blue-50 border-blue-200';
       case 'review':
         return 'bg-yellow-50 border-yellow-200';
+      case 'lead':
+        return 'bg-amber-50 border-amber-200';
       default:
         return 'bg-gray-50 border-gray-200';
     }
@@ -193,9 +204,9 @@ const NotificationPanel = ({ isOpen, onClose }) => {
                 }`}
               >
                 All
-                {notifications.newOrders + notifications.newQuestions + notifications.newReviews > 0 && (
+                {notifications.newOrders + notifications.newQuestions + notifications.newReviews + notifications.newLeads > 0 && (
                   <span className="ml-2 px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">
-                    {notifications.newOrders + notifications.newQuestions + notifications.newReviews}
+                    {notifications.newOrders + notifications.newQuestions + notifications.newReviews + notifications.newLeads}
                   </span>
                 )}
               </button>
@@ -241,6 +252,21 @@ const NotificationPanel = ({ isOpen, onClose }) => {
                 {notifications.newReviews > 0 && (
                   <span className="ml-2 px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">
                     {notifications.newReviews}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab('leads')}
+                className={`flex-1 px-4 py-3 text-sm font-medium transition-colors relative ${
+                  activeTab === 'leads'
+                    ? 'text-primary border-b-2 border-primary'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Leads
+                {notifications.newLeads > 0 && (
+                  <span className="ml-2 px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">
+                    {notifications.newLeads}
                   </span>
                 )}
               </button>

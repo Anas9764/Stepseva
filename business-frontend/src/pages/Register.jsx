@@ -1,0 +1,177 @@
+import { useState } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { useForm } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
+import * as yup from 'yup';
+import { useDispatch } from 'react-redux';
+import { loginSuccess } from '../store/slices/authSlice';
+import { authService } from '../services/authService';
+
+const schema = yup.object().shape({
+  name: yup.string().required('Name is required'),
+  email: yup.string().email('Invalid email').required('Email is required'),
+  password: yup.string().min(6, 'Password must be at least 6 characters').required('Password is required'),
+  confirmPassword: yup
+    .string()
+    .oneOf([yup.ref('password'), null], 'Passwords must match')
+    .required('Please confirm your password'),
+});
+
+const Register = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const dispatch = useDispatch();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  
+  // Get redirect path from location state or default to home
+  const from = location.state?.from || '/';
+  const requireAuth = location.state?.requireAuth || false;
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
+    resolver: yupResolver(schema),
+  });
+
+  const onSubmit = async (data) => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      const { confirmPassword, ...registerData } = data;
+      const response = await authService.register(registerData);
+      
+      if (response.success) {
+        dispatch(loginSuccess({
+          user: response.data.user,
+          token: response.data.token,
+        }));
+        
+        // Navigate to shop/home after registration (IndiaMart-style: no account required for inquiries)
+        navigate('/shop');
+      }
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || 'Registration failed. Please try again.';
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center py-12 px-4">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="max-w-md w-full"
+      >
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-heading font-bold text-secondary mb-2">Create Account</h1>
+          <p className="text-gray-600">Join StepSeva and start shopping</p>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-lg p-8">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-6">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <div>
+              <label className="block text-sm font-semibold text-text mb-2">
+                Full Name
+              </label>
+              <input
+                type="text"
+                {...register('name')}
+                className={`w-full px-4 py-3 rounded-lg border ${
+                  errors.name ? 'border-red-500' : 'border-gray-300'
+                } focus:outline-none focus:ring-2 focus:ring-primary`}
+                placeholder="John Doe"
+              />
+              {errors.name && (
+                <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-text mb-2">
+                Email Address
+              </label>
+              <input
+                type="email"
+                {...register('email')}
+                className={`w-full px-4 py-3 rounded-lg border ${
+                  errors.email ? 'border-red-500' : 'border-gray-300'
+                } focus:outline-none focus:ring-2 focus:ring-primary`}
+                placeholder="you@example.com"
+              />
+              {errors.email && (
+                <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-text mb-2">
+                Password
+              </label>
+              <input
+                type="password"
+                {...register('password')}
+                className={`w-full px-4 py-3 rounded-lg border ${
+                  errors.password ? 'border-red-500' : 'border-gray-300'
+                } focus:outline-none focus:ring-2 focus:ring-primary`}
+                placeholder="••••••••"
+              />
+              {errors.password && (
+                <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-text mb-2">
+                Confirm Password
+              </label>
+              <input
+                type="password"
+                {...register('confirmPassword')}
+                className={`w-full px-4 py-3 rounded-lg border ${
+                  errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
+                } focus:outline-none focus:ring-2 focus:ring-primary`}
+                placeholder="••••••••"
+              />
+              {errors.confirmPassword && (
+                <p className="text-red-500 text-sm mt-1">{errors.confirmPassword.message}</p>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-primary text-white py-3 rounded-full font-semibold hover:bg-secondary transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Creating account...' : 'Sign Up'}
+            </button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <p className="text-gray-600">
+              Already have an account?{' '}
+              <Link to="/login" className="text-primary hover:text-secondary font-semibold transition-colors">
+                Sign in
+              </Link>
+            </p>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+export default Register;
+

@@ -1,11 +1,13 @@
 const Order = require('../models/Order');
 const Product = require('../models/Product');
+const BusinessAccount = require('../models/BusinessAccount');
 const emailService = require('../services/emailService');
 const mongoose = require('mongoose');
 const { cache } = require('../config/redis');
 const { queueHelpers } = require('../config/queue');
 const { socketHelpers } = require('../config/socket');
 const logger = require('../config/logger');
+const { calculateB2BPrice } = require('../utils/b2bPricing');
 
 // Generate unique order ID
 const generateOrderId = async () => {
@@ -39,7 +41,13 @@ exports.createOrder = async (req, res, next) => {
       stripeSessionId,
       paymentStatus,
       orderStatus,
-      paymentType 
+      paymentType,
+      // B2B Fields
+      isB2BOrder,
+      businessAccountId,
+      purchaseOrderNumber,
+      notes,
+      requiresApproval,
     } = req.body;
 
     // Note: Basic validation is done by middleware, but we keep these checks as backup
@@ -58,10 +66,12 @@ exports.createOrder = async (req, res, next) => {
       });
     }
 
-    if (!paymentType || !['cod', 'online'].includes(paymentType)) {
+    // Validate payment type - B2B supports credit and invoice
+    const validPaymentTypes = ['cod', 'online', 'credit', 'invoice'];
+    if (!paymentType || !validPaymentTypes.includes(paymentType)) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide payment type (cod or online)',
+        message: `Please provide payment type. Valid types: ${validPaymentTypes.join(', ')}`,
       });
     }
 
@@ -70,7 +80,34 @@ exports.createOrder = async (req, res, next) => {
     session.startTransaction();
 
     try {
+      // Get business account if B2B order (within transaction)
+      let businessAccount = null;
+      if (isB2BOrder && businessAccountId) {
+        businessAccount = await BusinessAccount.findById(businessAccountId).session(session);
+        if (!businessAccount || businessAccount.status !== 'active') {
+          await session.abortTransaction();
+          return res.status(400).json({
+            success: false,
+            message: 'Invalid or inactive business account',
+          });
+        }
+
+        // Validate credit limit for credit/invoice payments
+        if ((paymentType === 'credit' || paymentType === 'invoice') && businessAccount.creditLimit > 0) {
+          const creditAvailable = businessAccount.creditLimit - businessAccount.creditUsed;
+          if (totalAmount > creditAvailable) {
+            await session.abortTransaction();
+            return res.status(400).json({
+              success: false,
+              message: `Insufficient credit. Available: ₹${creditAvailable.toLocaleString('en-IN')}, Required: ₹${totalAmount.toLocaleString('en-IN')}`,
+            });
+          }
+        }
+      }
+
       // Validate products and update stock within transaction
+      // Also recalculate prices with B2B pricing if applicable
+      const validatedProducts = [];
       for (const item of products) {
         const product = await Product.findById(item.productId).session(session);
         
@@ -109,36 +146,98 @@ exports.createOrder = async (req, res, next) => {
           });
         }
 
+        // Check MOQ for B2B orders
+        if (isB2BOrder && product.moq && product.moq > 1) {
+          if (item.quantity < product.moq) {
+            await session.abortTransaction();
+            return res.status(400).json({
+              success: false,
+              message: `Minimum order quantity for ${product.name} is ${product.moq} units`,
+            });
+          }
+        }
+
+        // Calculate B2B price if applicable
+        let finalPrice = item.price;
+        if (businessAccount) {
+          finalPrice = calculateB2BPrice(product, businessAccount, item.quantity);
+        }
+
+        validatedProducts.push({
+          ...item,
+          price: finalPrice, // Use calculated B2B price
+        });
+
         product.stock -= item.quantity;
         await product.save({ session });
+      }
+
+      // Recalculate total amount with B2B pricing if applicable
+      let finalTotalAmount = totalAmount;
+      if (businessAccount && validatedProducts.length > 0) {
+        finalTotalAmount = validatedProducts.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        // Add tax (10%)
+        finalTotalAmount = finalTotalAmount * 1.1;
       }
 
       // Generate unique order ID
       const orderId = await generateOrderId();
       
       // Determine initial payment status based on payment type
-      const initialPaymentStatus = paymentType === 'cod' ? 'pending' : (paymentStatus || 'pending');
+      let initialPaymentStatus = 'pending';
+      if (paymentType === 'cod') {
+        initialPaymentStatus = 'pending';
+      } else if (paymentType === 'credit' || paymentType === 'invoice') {
+        initialPaymentStatus = 'pending'; // Will be marked as paid when invoice is generated
+      } else if (paymentType === 'online') {
+        initialPaymentStatus = paymentStatus || 'pending';
+      }
+
       const initialOrderStatus = orderStatus || 'pending';
       
+      // Determine if approval is required
+      const needsApproval = requiresApproval || (isB2BOrder && businessAccount?.requiresApproval) || false;
+      
+      // Calculate due date for credit/invoice payments
+      let dueDate = null;
+      if ((paymentType === 'credit' || paymentType === 'invoice') && businessAccount) {
+        const paymentTerms = businessAccount.paymentTerms || 'net30';
+        const days = parseInt(paymentTerms.replace('net', '')) || 30;
+        dueDate = new Date();
+        dueDate.setDate(dueDate.getDate() + days);
+      }
+      
       // Create order with timeline within transaction
-      const order = await Order.create([{
+      const orderData = {
         userId,
-        products,
+        products: validatedProducts.length > 0 ? validatedProducts : products,
         shippingAddress,
         email,
         phone,
-        totalAmount,
+        totalAmount: finalTotalAmount,
         paymentType,
         orderId,
         stripeSessionId: stripeSessionId || (paymentType === 'online' ? `order-${Date.now()}` : null),
         paymentStatus: initialPaymentStatus,
         orderStatus: initialOrderStatus,
+        // B2B Fields
+        isB2BOrder: isB2BOrder || false,
+        businessAccountId: businessAccountId || null,
+        purchaseOrderNumber: purchaseOrderNumber || null,
+        requiresApproval: needsApproval,
+        approvalStatus: needsApproval ? 'pending' : 'approved',
+        paymentTerms: businessAccount?.paymentTerms || null,
+        dueDate: dueDate,
         orderTimeline: [
           {
             status: initialOrderStatus,
             timestamp: new Date(),
             note: paymentType === 'cod' 
               ? 'Order placed with Cash on Delivery' 
+              : paymentType === 'credit'
+              ? `Order placed with Credit Terms (${businessAccount?.paymentTerms?.replace('net', 'Net ') || 'Net 30'})`
+              : paymentType === 'invoice'
+              ? 'Order placed - Invoice will be generated'
               : 'Order placed with Online Payment',
           },
         ],
@@ -148,9 +247,27 @@ exports.createOrder = async (req, res, next) => {
           userAgent: req.headers['user-agent'],
           referrer: req.headers.referer,
         },
-      }], { session });
+      };
+
+      // Add notes if provided
+      if (notes) {
+        orderData.notes = [{
+          note: notes,
+          addedBy: userId || null,
+          isInternal: false,
+          createdAt: new Date(),
+        }];
+      }
+
+      const order = await Order.create([orderData], { session });
 
       const createdOrder = order[0];
+
+      // Update credit used if credit/invoice payment
+      if ((paymentType === 'credit' || paymentType === 'invoice') && businessAccount) {
+        businessAccount.creditUsed += finalTotalAmount;
+        await businessAccount.save({ session });
+      }
 
       // Commit transaction
       await session.commitTransaction();
@@ -158,6 +275,9 @@ exports.createOrder = async (req, res, next) => {
       // Populate for response (outside transaction)
       await createdOrder.populate('userId', 'name email');
       await createdOrder.populate('products.productId', 'name image images');
+      if (createdOrder.businessAccountId) {
+        await createdOrder.populate('businessAccountId', 'companyName pricingTier paymentTerms');
+      }
 
       // Send emails via queue (non-blocking)
       queueHelpers.addOrderConfirmationEmail(createdOrder).catch(err => 

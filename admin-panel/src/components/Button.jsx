@@ -16,11 +16,11 @@ const Button = ({
   const baseClasses = 'inline-flex items-center justify-center gap-2 font-semibold rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 shadow-sm';
 
   const variants = {
-    primary: 'bg-gradient-to-r from-primary to-primary-300 text-white hover:shadow-lg hover:opacity-90 focus:ring-primary-200 active:scale-95',
-    secondary: 'bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-gray-400 active:scale-95',
-    danger: 'bg-red-500 text-white hover:bg-red-600 focus:ring-red-500 active:scale-95',
-    success: 'bg-green-500 text-white hover:bg-green-600 focus:ring-green-500 active:scale-95',
-    outline: 'border-2 border-primary text-primary font-semibold hover:bg-primary-50 hover:border-primary-300 focus:ring-primary-200 bg-white active:scale-95',
+    primary: 'bg-gradient-to-r from-primary to-primary-300 text-white hover:shadow-lg hover:opacity-90 focus:ring-primary-200 active:scale-95 dark:from-primary dark:to-primary-300',
+    secondary: 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 focus:ring-gray-400 active:scale-95',
+    danger: 'bg-red-500 text-white hover:bg-red-600 focus:ring-red-500 active:scale-95 dark:bg-red-600 dark:hover:bg-red-700',
+    success: 'bg-green-500 text-white hover:bg-green-600 focus:ring-green-500 active:scale-95 dark:bg-green-600 dark:hover:bg-green-700',
+    outline: 'border-2 border-primary text-primary dark:text-primary-300 font-semibold hover:bg-primary-50 dark:hover:bg-primary/10 hover:border-primary-300 focus:ring-primary-200 bg-white dark:bg-gray-800 active:scale-95',
   };
 
   const sizes = {

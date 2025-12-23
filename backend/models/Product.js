@@ -21,6 +21,59 @@ const productSchema = new mongoose.Schema(
       required: [true, 'Please provide a price'],
       min: 0,
     },
+    // B2B Volume Pricing Tiers
+    volumePricing: [
+      {
+        tier: {
+          type: String,
+          enum: ['standard', 'retailer', 'wholesaler', 'premium'],
+        },
+        price: {
+          type: Number,
+          min: 0,
+        },
+      },
+    ],
+    // Quantity-based pricing (volume discounts)
+    quantityPricing: [
+      {
+        minQuantity: {
+          type: Number,
+          required: true,
+          min: 1,
+        },
+        maxQuantity: {
+          type: Number,
+        },
+        price: {
+          type: Number,
+          required: true,
+          min: 0,
+        },
+        discount: {
+          type: Number,
+          min: 0,
+          max: 100,
+        },
+      },
+    ],
+    // Minimum Order Quantity (MOQ)
+    moq: {
+      type: Number,
+      default: 1,
+      min: 1,
+    },
+    // Bulk pricing enabled
+    bulkPricingEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    // Product type: 'b2c', 'b2b', or 'both' (available for both B2C and B2B)
+    productType: {
+      type: String,
+      enum: ['b2c', 'b2b', 'both'],
+      default: 'b2c', // Default to B2C for backward compatibility
+    },
     brand: {
       type: String,
       default: 'StepSeva',
