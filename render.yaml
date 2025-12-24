@@ -1,0 +1,75 @@
+# Render Blueprint Configuration
+# Deploy both backend and frontend with one click
+# Usage: In Render dashboard, click "New +" → "Blueprint" → Paste this file
+
+services:
+  # Backend Web Service
+  - type: web
+    name: stepseva-backend
+    env: node
+    region: singapore  # Change to your preferred region
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    rootDir: backend
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        sync: false  # Set manually in Render dashboard
+      - key: JWT_SECRET
+        sync: false  # Generate and set manually
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_CURRENCY
+        value: INR
+      - key: EMAIL_HOST
+        value: smtp.gmail.com
+      - key: EMAIL_PORT
+        value: 587
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: CLIENT_URL
+        sync: false  # Update after frontend deployment
+      - key: ADMIN_URL
+        sync: false  # Update after admin deployment
+      - key: BUSINESS_FRONTEND_URL
+        sync: false  # Update after frontend deployment
+      - key: LOG_LEVEL
+        value: info
+
+  # Business Frontend Static Site
+  - type: web
+    name: stepseva-business-frontend
+    env: static
+    region: singapore  # Change to your preferred region
+    plan: free
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    rootDir: business-frontend
+    envVars:
+      - key: VITE_API_URL
+        sync: false  # Set to backend URL after deployment
+      - key: VITE_STRIPE_PUBLISHABLE_KEY
+        sync: false
+
+  # Redis (Optional)
+  - type: redis
+    name: stepseva-redis
+    plan: free
+    maxmemoryPolicy: allkeys-lru
+

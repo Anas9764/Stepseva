@@ -67,11 +67,14 @@ app.use(helmet({
 }));
 
 // CORS Configuration
+// Build allowed origins from environment variables
 const allowedOrigins = [
+  // Localhost URLs (always allowed in development)
   'http://localhost:5173', // Regular Frontend
   'http://localhost:5174', // Admin Panel
   'http://localhost:5175', // Business Frontend
   'http://localhost:3000',
+  // Production URLs from environment variables
   process.env.CLIENT_URL,
   process.env.ADMIN_URL,
   process.env.BUSINESS_FRONTEND_URL
@@ -79,10 +82,30 @@ const allowedOrigins = [
   .filter(Boolean) // Remove undefined values
   .map(url => url.trim().replace(/\/$/, '')); // Remove trailing slashes and whitespace
 
-// Log allowed origins in development
+// Log allowed origins
 if (process.env.NODE_ENV !== 'production') {
   console.log('🌐 Allowed CORS Origins:', allowedOrigins);
-  logger.info('CORS Configuration', { allowedOrigins });
+  console.log('📍 Environment:', process.env.NODE_ENV || 'development');
+  console.log('🔗 CLIENT_URL:', process.env.CLIENT_URL || 'not set');
+  console.log('🔗 ADMIN_URL:', process.env.ADMIN_URL || 'not set');
+  console.log('🔗 BUSINESS_FRONTEND_URL:', process.env.BUSINESS_FRONTEND_URL || 'not set');
+  logger.info('CORS Configuration', { 
+    allowedOrigins,
+    environment: process.env.NODE_ENV,
+    clientUrl: process.env.CLIENT_URL,
+    adminUrl: process.env.ADMIN_URL,
+    businessFrontendUrl: process.env.BUSINESS_FRONTEND_URL
+  });
+} else {
+  // In production, log CORS info for debugging
+  console.log('🌐 Allowed CORS Origins Count:', allowedOrigins.length);
+  console.log('🔗 BUSINESS_FRONTEND_URL:', process.env.BUSINESS_FRONTEND_URL || 'not set');
+  logger.info('CORS Configuration', { 
+    allowedOriginsCount: allowedOrigins.length,
+    allowedOrigins: allowedOrigins, // Include in production for debugging
+    environment: 'production',
+    businessFrontendUrl: process.env.BUSINESS_FRONTEND_URL
+  });
 }
 
 app.use(cors({
