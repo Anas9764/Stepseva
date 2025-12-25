@@ -4,24 +4,24 @@ import toast from 'react-hot-toast';
 // Get API URL based on environment
 // Priority: 1. VITE_API_URL from .env, 2. Development: localhost, 3. Production: Render
 const getApiUrl = () => {
-  // If VITE_API_URL is explicitly set in .env, use it
+  // If VITE_API_URL is explicitly set in .env, use it (highest priority)
   if (import.meta.env.VITE_API_URL) {
     const url = import.meta.env.VITE_API_URL;
-    console.log('🔗 Using API URL from .env:', url);
+    console.log('🔗 Using API URL from environment variable:', url);
     return url;
   }
   
   // Auto-detect based on environment
   if (import.meta.env.DEV) {
-    // Development mode - use localhost
+    // Development mode (npm run dev) - use localhost
     const url = 'http://localhost:5000/api';
-    console.log('🔗 Using default development API URL:', url);
+    console.log('🔗 Development mode: Using localhost API URL:', url);
     return url;
   }
   
   // Production mode - use Render backend
-  const url = 'https://eclora-sj6w.onrender.com/api';
-  console.log('🔗 Using production API URL:', url);
+  const url = 'https://stepseva.onrender.com/api';
+  console.log('🔗 Production mode: Using Render backend URL:', url);
   return url;
 };
 

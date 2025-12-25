@@ -20,6 +20,6 @@ export const getApiUrl = () => {
   }
   
   // Production mode - use Render backend
-  return 'https://eclora-sj6w.onrender.com/api';
+  return 'https://stepseva.onrender.com/api';
 };
 
