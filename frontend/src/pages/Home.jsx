@@ -58,19 +58,32 @@ const Home = () => {
   }, []);
   const fetchHeroBanners = async () => {
     try {
-      const response = await bannerService.getActiveBanners();
-      const banners = Array.isArray(response?.data)
-        ? response.data
-        : Array.isArray(response)
-        ? response
-        : [];
-      const sortedBanners = [...banners].sort(
-        (a, b) => (a?.priority ?? 0) - (b?.priority ?? 0)
+      // bannerService.getActiveBanners() now returns the array directly
+      const banners = await bannerService.getActiveBanners();
+      
+      // Ensure banners is an array
+      const bannersArray = Array.isArray(banners) ? banners : [];
+      
+      // Sort by priority (lower number = higher priority)
+      const sortedBanners = [...bannersArray].sort(
+        (a, b) => (a?.priority ?? 999) - (b?.priority ?? 999)
       );
+      
       setHeroBanners(sortedBanners);
       setActiveBannerIndex(0);
+      
+      if (bannersArray.length > 0) {
+        console.log('✅ Banners loaded:', bannersArray.length);
+      } else {
+        console.warn('⚠️ No banners found');
+      }
     } catch (error) {
-      console.error('Error fetching banner:', error);
+      console.error('❌ Error fetching banners:', error);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
       setHeroBanners([]);
       setActiveBannerIndex(0);
     }

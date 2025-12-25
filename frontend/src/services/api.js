@@ -50,7 +50,17 @@ api.interceptors.request.use(
 
 // Response interceptor for error handling
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Log successful API calls in development
+    if (import.meta.env.DEV) {
+      console.log('✅ API Response:', {
+        url: response.config.url,
+        status: response.status,
+        data: response.data,
+      });
+    }
+    return response;
+  },
   (error) => {
     // Log error details for debugging
     if (error.request && !error.response) {

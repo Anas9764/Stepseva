@@ -74,17 +74,27 @@ function calculateQuantityPrice(product, basePrice, quantity) {
  * @returns {Object} - Pricing information
  */
 exports.getPricingInfo = (product, businessAccount = null) => {
+  // Defensive checks
+  if (!product) {
+    throw new Error('Product is required for pricing calculation');
+  }
+
   const standardPrice = product.price || 0;
   let tierPrice = standardPrice;
   let pricingTier = 'standard';
 
-  if (businessAccount && product.volumePricing) {
-    const tier = product.volumePricing.find(
-      (vp) => vp.tier === businessAccount.pricingTier
-    );
-    if (tier && tier.price) {
-      tierPrice = tier.price;
-      pricingTier = businessAccount.pricingTier;
+  if (businessAccount && businessAccount.pricingTier && product.volumePricing && Array.isArray(product.volumePricing)) {
+    try {
+      const tier = product.volumePricing.find(
+        (vp) => vp && vp.tier === businessAccount.pricingTier
+      );
+      if (tier && tier.price) {
+        tierPrice = tier.price;
+        pricingTier = businessAccount.pricingTier;
+      }
+    } catch (error) {
+      console.error('Error finding volume pricing tier:', error);
+      // Continue with standard price
     }
   }
 
@@ -92,7 +102,7 @@ exports.getPricingInfo = (product, businessAccount = null) => {
     standardPrice,
     tierPrice,
     pricingTier,
-    quantityPricing: product.quantityPricing || [],
+    quantityPricing: Array.isArray(product.quantityPricing) ? product.quantityPricing : [],
     moq: product.moq || 1,
     bulkPricingEnabled: product.bulkPricingEnabled || false,
   };

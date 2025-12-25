@@ -307,9 +307,15 @@ exports.getAllProducts = async (req, res, next) => {
         // Get B2B pricing info if business account exists AND product supports B2B
         const productType = p.productType || 'b2c';
         const supportsB2B = productType === 'b2b' || productType === 'both';
-        const pricingInfo = (businessAccount && supportsB2B && p.bulkPricingEnabled) 
-          ? getPricingInfo(p, businessAccount) 
-          : null;
+        let pricingInfo = null;
+        try {
+          pricingInfo = (businessAccount && supportsB2B && p.bulkPricingEnabled) 
+            ? getPricingInfo(p, businessAccount) 
+            : null;
+        } catch (pricingError) {
+          console.error('Error calculating pricing info:', pricingError);
+          pricingInfo = null; // Continue without pricing info
+        }
         
         const productData = {
           ...p,
