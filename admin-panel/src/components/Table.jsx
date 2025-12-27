@@ -37,18 +37,22 @@ const Table = ({
     }
   }, [data]);
 
-  // Notify parent of selection changes (only when selection actually changes)
+  // Notify parent of selection changes.
+  // IMPORTANT: only do this when bulk selection is enabled; otherwise a parent
+  // state update can cause a render loop (Table -> parent setState -> Table).
   useEffect(() => {
-    if (onSelectionChangeRef.current && selectedRows.size > 0) {
-      const selectedData = data.filter((row, index) => 
+    if (!enableBulkSelection) return;
+    if (!onSelectionChangeRef.current) return;
+
+    if (selectedRows.size > 0) {
+      const selectedData = data.filter((row, index) =>
         selectedRows.has(getRowIdRef.current(row, index))
       );
       onSelectionChangeRef.current(selectedData, selectedRows.size);
-    } else if (onSelectionChangeRef.current && selectedRows.size === 0) {
-      // Notify when selection is cleared
+    } else {
       onSelectionChangeRef.current([], 0);
     }
-  }, [selectedRows, data]);
+  }, [enableBulkSelection, selectedRows, data]);
 
   const handleSelectAll = (e) => {
     if (e.target.checked) {

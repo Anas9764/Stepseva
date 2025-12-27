@@ -310,8 +310,8 @@ exports.getAllProducts = async (req, res, next) => {
         let pricingInfo = null;
         try {
           pricingInfo = (businessAccount && supportsB2B && p.bulkPricingEnabled) 
-            ? getPricingInfo(p, businessAccount) 
-            : null;
+          ? getPricingInfo(p, businessAccount) 
+          : null;
         } catch (pricingError) {
           console.error('Error calculating pricing info:', pricingError);
           pricingInfo = null; // Continue without pricing info

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import Card from '../components/Card';
 import { DollarSign, ShoppingBag, Users, TrendingUp, Star, MessageCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
-import ReactECharts from 'echarts-for-react';
+import SafeECharts from '../components/SafeECharts';
 import { useDarkMode } from '../hooks/useDarkMode';
 
 const B2CAnalytics = () => {
@@ -152,7 +152,7 @@ const B2CAnalytics = () => {
         className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6"
       >
         <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">B2C Sales Overview</h2>
-        <ReactECharts option={chartOption} style={{ height: '350px' }} />
+        <SafeECharts option={chartOption} style={{ height: '350px' }} />
       </motion.div>
 
       {/* Additional Analytics Sections */}

@@ -113,30 +113,34 @@ function App() {
                   <Route path="settings" element={<Settings />} />
 
                   {/* B2B Module Routes */}
-                  <Route path="b2b" element={<B2BDashboard />} />
-                  <Route path="b2b/leads" element={<Leads />} />
-                  <Route path="b2b/business-accounts" element={<BusinessAccounts />} />
-                  <Route path="b2b/orders" element={<Orders />} />
-                  <Route path="b2b/lead-analytics" element={<B2BLeadAnalytics />} />
-                  <Route path="b2b/product-analytics" element={<B2BProductInquiryAnalytics />} />
-                  <Route path="b2b/quotes" element={<B2BQuoteManagement />} />
-                  <Route path="b2b/reports" element={<B2BReportsExport />} />
-                  <Route path="b2b/communication" element={<B2BCommunicationCenter />} />
-                  <Route path="b2b/team" element={<B2BTeamManagement />} />
-                  <Route path="b2b/calendar" element={<B2BCalendar />} />
-                  <Route path="b2b/crm" element={<B2BBuyerCRM />} />
+                  <Route path="b2b">
+                    <Route index element={<B2BDashboard />} />
+                    <Route path="leads" element={<Leads />} />
+                    <Route path="business-accounts" element={<BusinessAccounts />} />
+                    <Route path="orders" element={<Orders />} />
+                    <Route path="lead-analytics" element={<B2BLeadAnalytics />} />
+                    <Route path="product-analytics" element={<B2BProductInquiryAnalytics />} />
+                    <Route path="quotes" element={<B2BQuoteManagement />} />
+                    <Route path="reports" element={<B2BReportsExport />} />
+                    <Route path="communication" element={<B2BCommunicationCenter />} />
+                    <Route path="team" element={<B2BTeamManagement />} />
+                    <Route path="calendar" element={<B2BCalendar />} />
+                    <Route path="crm" element={<B2BBuyerCRM />} />
+                  </Route>
 
                   {/* B2C Module Routes */}
-                  <Route path="b2c" element={<B2CDashboard />} />
-                  <Route path="b2c/orders" element={<B2COrders />} />
-                  <Route path="b2c/reviews" element={<Reviews />} />
-                  <Route path="b2c/questions" element={<Questions />} />
-                  <Route path="b2c/analytics" element={<B2CAnalytics />} />
-                  <Route path="b2c/support" element={<CustomerSupport />} />
-                  <Route path="b2c/coupons" element={<Coupons />} />
-                  <Route path="b2c/banners" element={<Banners />} />
-                  <Route path="b2c/segmentation" element={<CustomerSegmentation />} />
-                  <Route path="b2c/wishlists" element={<WishlistManagement />} />
+                  <Route path="b2c">
+                    <Route index element={<B2CDashboard />} />
+                    <Route path="orders" element={<B2COrders />} />
+                    <Route path="reviews" element={<Reviews />} />
+                    <Route path="questions" element={<Questions />} />
+                    <Route path="analytics" element={<B2CAnalytics />} />
+                    <Route path="support" element={<CustomerSupport />} />
+                    <Route path="coupons" element={<Coupons />} />
+                    <Route path="banners" element={<Banners />} />
+                    <Route path="segmentation" element={<CustomerSegmentation />} />
+                    <Route path="wishlists" element={<WishlistManagement />} />
+                  </Route>
 
                   {/* Legacy routes (redirect to B2C module for backward compatibility) */}
                   <Route path="reviews" element={<Navigate to="/b2c/reviews" replace />} />

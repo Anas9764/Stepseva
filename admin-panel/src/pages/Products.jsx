@@ -44,12 +44,6 @@ const Products = () => {
     dispatch(fetchCategories());
   }, [dispatch]);
 
-  useEffect(() => {
-    if (error) {
-      toast.error(error);
-    }
-  }, [error]);
-
   // Filter and paginate products
   const filteredProducts = useMemo(() => {
     let filtered = [...products];
@@ -152,8 +146,15 @@ const Products = () => {
   }, []);
 
   // Bulk operations
-  const handleSelectionChange = useCallback((selected, count) => {
-    setSelectedProducts(selected);
+  const handleSelectionChange = useCallback((selected) => {
+    setSelectedProducts((prev) => {
+      if (prev.length === selected.length) {
+        const prevIds = prev.map((p) => p?._id).join(',');
+        const nextIds = selected.map((p) => p?._id).join(',');
+        if (prevIds === nextIds) return prev;
+      }
+      return selected;
+    });
   }, []);
 
   const handleBulkDelete = useCallback(async () => {

@@ -5,7 +5,7 @@ import { fetchStats, fetchSalesData, fetchRecentOrders, fetchRecentLeads, fetchU
 import Card from '../components/Card';
 import Table from '../components/Table';
 import Loader from '../components/Loader';
-import ReactECharts from 'echarts-for-react';
+import SafeECharts from '../components/SafeECharts';
 import { DollarSign, Users, Package, ShoppingBag, Briefcase, Phone, Calendar, TrendingUp, UserCheck, AlertCircle, History } from 'lucide-react';
 import { motion } from 'framer-motion';
 import LeadStatusBadge from '../components/Leads/LeadStatusBadge';
@@ -205,7 +205,7 @@ const Dashboard = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
           className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border-l-4 border-purple-500 cursor-pointer hover:shadow-lg transition-shadow"
-          onClick={() => navigate('/leads')}
+          onClick={() => navigate('/b2b/leads')}
         >
           <div className="flex items-center justify-between">
             <div>
@@ -227,7 +227,7 @@ const Dashboard = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
           className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border-l-4 border-green-500 cursor-pointer hover:shadow-lg transition-shadow"
-          onClick={() => navigate('/business-accounts')}
+          onClick={() => navigate('/b2b/business-accounts')}
         >
           <div className="flex items-center justify-between">
             <div>
@@ -247,7 +247,7 @@ const Dashboard = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
           className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border-l-4 border-yellow-500 cursor-pointer hover:shadow-lg transition-shadow"
-          onClick={() => navigate('/business-accounts')}
+          onClick={() => navigate('/b2b/business-accounts')}
         >
           <div className="flex items-center justify-between">
             <div>
@@ -285,7 +285,7 @@ const Dashboard = () => {
         className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6"
       >
         <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">Sales Overview</h2>
-        <ReactECharts option={chartOption} style={{ height: '350px' }} />
+        <SafeECharts option={chartOption} style={{ height: '350px' }} />
       </motion.div>
 
       {/* Two Column Layout */}
@@ -299,7 +299,7 @@ const Dashboard = () => {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Recent Orders</h2>
             <button
-              onClick={() => navigate('/orders')}
+              onClick={() => navigate('/b2b/orders')}
               className="text-sm text-primary dark:text-primary-300 hover:underline"
             >
               View All
@@ -321,7 +321,7 @@ const Dashboard = () => {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Recent B2B Leads</h2>
             <button
-              onClick={() => navigate('/leads')}
+              onClick={() => navigate('/b2b/leads')}
               className="text-sm text-primary dark:text-primary-300 hover:underline"
             >
               View All
@@ -338,7 +338,7 @@ const Dashboard = () => {
                   <div
                     key={lead._id || index}
                     className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
-                    onClick={() => navigate('/leads')}
+                    onClick={() => navigate('/b2b/leads')}
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -382,7 +382,7 @@ const Dashboard = () => {
                 <div
                   key={lead._id || index}
                   className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
-                  onClick={() => navigate('/leads')}
+                  onClick={() => navigate('/b2b/leads')}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">

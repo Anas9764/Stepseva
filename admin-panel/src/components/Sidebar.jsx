@@ -234,7 +234,6 @@ const Sidebar = ({ isOpen, onClose }) => {
             <div className="space-y-2">
               {mainMenuItems.map((item) => {
                 const Icon = item.icon;
-                const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path + '/'));
                 return (
                   <NavLink
                     key={item.path}
@@ -248,15 +247,14 @@ const Sidebar = ({ isOpen, onClose }) => {
                         item.onNavigate();
                       }
                     }}
-                    className={({ isActive: active }) =>
+                    className={({ isActive }) =>
                       `w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all duration-200 relative text-left ${
-                        active
+                        isActive
                           ? 'bg-primary/10 text-primary font-medium'
                           : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                       }`
                     }
                     aria-label={item.label}
-                    aria-current={location.pathname === item.path ? 'page' : undefined}
                   >
                     <div className="flex items-center gap-3">
                       <Icon size={20} />
@@ -303,7 +301,6 @@ const Sidebar = ({ isOpen, onClose }) => {
                 <div className="mt-2 space-y-1 ml-3">
                   {b2bMenuItems.map((item) => {
                     const Icon = item.icon;
-                    const isActive = location.pathname === item.path || (item.path !== '/b2b' && location.pathname.startsWith(item.path));
                     return (
                       <NavLink
                         key={item.path}
@@ -317,9 +314,9 @@ const Sidebar = ({ isOpen, onClose }) => {
                             item.onNavigate();
                           }
                         }}
-                          className={({ isActive: active }) =>
+                        className={({ isActive }) =>
                           `w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-all duration-200 relative text-left ${
-                            active
+                            isActive
                               ? 'bg-primary/10 dark:bg-primary/20 text-primary font-medium'
                               : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
                           }`
@@ -372,7 +369,6 @@ const Sidebar = ({ isOpen, onClose }) => {
                 <div className="mt-2 space-y-1 ml-3">
                   {b2cMenuItems.map((item) => {
                     const Icon = item.icon;
-                    const isActive = location.pathname === item.path || (item.path !== '/b2c' && location.pathname.startsWith(item.path));
                     return (
                       <NavLink
                         key={item.path}
@@ -386,9 +382,9 @@ const Sidebar = ({ isOpen, onClose }) => {
                             item.onNavigate();
                           }
                         }}
-                        className={({ isActive: active }) =>
+                        className={({ isActive }) =>
                           `w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-all duration-200 relative text-left ${
-                            active
+                            isActive
                               ? 'bg-green-500/10 dark:bg-green-500/20 text-green-600 dark:text-green-400 font-medium'
                               : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
                           }`
