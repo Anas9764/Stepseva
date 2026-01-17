@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { updateLead } from '../../store/slices/leadsSlice';
+import bulkRfqService from '../../services/bulkRfqService';
 import Modal from '../Modal';
 import Button from '../Button';
 import LeadStatusBadge from './LeadStatusBadge';
@@ -24,12 +25,16 @@ const LeadDetailModal = ({ isOpen, onClose, lead, onUpdate }) => {
 
   useEffect(() => {
     if (lead) {
-      setStatus(lead.status || 'new');
+      // For bulk RFQ, use original status if available, otherwise use status
+      // For single leads, use the lead status
+      const initialStatus = lead._isBulkRFQ && lead._originalStatus ? lead._originalStatus : (lead.status || 'new');
+      setStatus(initialStatus);
       setPriority(lead.priority || 'medium');
       setQuotedPrice(lead.quotedPrice || '');
       setQuoteNotes(lead.quoteNotes || '');
       setFollowUpDate(lead.followUpDate ? new Date(lead.followUpDate).toISOString().split('T')[0] : '');
-      setInternalNotes(lead.internalNotes || '');
+      // Handle both single lead (internalNotes) and bulk RFQ (adminNotes)
+      setInternalNotes(lead.internalNotes || lead.adminNotes || '');
     }
   }, [lead]);
 
@@ -44,14 +49,24 @@ const LeadDetailModal = ({ isOpen, onClose, lead, onUpdate }) => {
       if (quotedPrice) updateData.quotedPrice = parseFloat(quotedPrice);
       if (quoteNotes) updateData.quoteNotes = quoteNotes;
       if (followUpDate) updateData.followUpDate = followUpDate;
-      if (internalNotes) updateData.internalNotes = internalNotes;
+      if (internalNotes) updateData.adminNotes = internalNotes;
 
-      await dispatch(updateLead({ id: lead._id, data: updateData })).unwrap();
-      toast.success('Lead updated successfully!');
+      // Handle bulk RFQ updates
+      if (lead._isBulkRFQ) {
+        // Status is already in bulk RFQ format (in_progress, won, etc.) from dropdown
+        updateData.status = status;
+        
+        await bulkRfqService.update(lead._id, updateData);
+        toast.success('Bulk RFQ updated successfully!');
+      } else {
+        await dispatch(updateLead({ id: lead._id, data: updateData })).unwrap();
+        toast.success('Lead updated successfully!');
+      }
+      
       onUpdate();
       onClose();
     } catch (error) {
-      toast.error(error || 'Failed to update lead');
+      toast.error(error || 'Failed to update');
     } finally {
       setLoading(false);
     }
@@ -62,35 +77,58 @@ const LeadDetailModal = ({ isOpen, onClose, lead, onUpdate }) => {
       setLoading(true);
       let updateData = {};
 
-      switch (action) {
-        case 'contacted':
-          updateData = {
-            status: 'contacted',
-            contactedAt: new Date().toISOString(),
-          };
-          break;
-        case 'interested':
-          updateData = { status: 'interested' };
-          break;
-        case 'quoted':
-          updateData = { status: 'quoted' };
-          break;
-        case 'closed':
-          updateData = { status: 'closed' };
-          break;
-        case 'rejected':
-          updateData = { status: 'rejected' };
-          break;
-        default:
-          break;
+      if (lead._isBulkRFQ) {
+        // Map actions for bulk RFQ
+        switch (action) {
+          case 'contacted':
+            updateData = { status: 'in_progress' };
+            break;
+          case 'quoted':
+            updateData = { status: 'quoted' };
+            break;
+          case 'closed':
+            updateData = { status: 'won' };
+            break;
+          case 'rejected':
+            updateData = { status: 'lost' };
+            break;
+          default:
+            updateData = { status: action };
+        }
+        await bulkRfqService.update(lead._id, updateData);
+        toast.success(`Bulk RFQ marked as ${action}!`);
+      } else {
+        // Single lead actions
+        switch (action) {
+          case 'contacted':
+            updateData = {
+              status: 'contacted',
+              contactedAt: new Date().toISOString(),
+            };
+            break;
+          case 'interested':
+            updateData = { status: 'interested' };
+            break;
+          case 'quoted':
+            updateData = { status: 'quoted' };
+            break;
+          case 'closed':
+            updateData = { status: 'closed' };
+            break;
+          case 'rejected':
+            updateData = { status: 'rejected' };
+            break;
+          default:
+            break;
+        }
+        await dispatch(updateLead({ id: lead._id, data: updateData })).unwrap();
+        toast.success(`Lead marked as ${action}!`);
       }
-
-      await dispatch(updateLead({ id: lead._id, data: updateData })).unwrap();
-      toast.success(`Lead marked as ${action}!`);
+      
       onUpdate();
       onClose();
     } catch (error) {
-      toast.error('Failed to update lead');
+      toast.error('Failed to update');
     } finally {
       setLoading(false);
     }
@@ -113,10 +151,13 @@ const LeadDetailModal = ({ isOpen, onClose, lead, onUpdate }) => {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`Lead Details - ${lead.buyerName}`}
+      title={`${lead._isBulkRFQ ? 'Bulk RFQ' : 'Lead'} Details - ${lead.buyerName}`}
       size="xl"
     >
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-h-[70vh] overflow-y-auto p-6">
+      <div className="flex flex-col">
+        {/* Scrollable Content */}
+        <div className="px-6 py-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left Column - Buyer & Product Information */}
         <div className="space-y-6">
           {/* Buyer Information */}
@@ -146,11 +187,29 @@ const LeadDetailModal = ({ isOpen, onClose, lead, onUpdate }) => {
                   <p className="text-xs text-gray-600">Phone</p>
                   <p className="text-sm font-semibold text-gray-900">{lead.buyerPhone}</p>
                   <div className="flex gap-2 mt-2">
-                    <button className="text-xs bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700">
+                    <button 
+                      onClick={() => window.open(`tel:${lead.buyerPhone}`, '_self')}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition-colors shadow-sm"
+                    >
+                      <Phone size={12} />
                       Call
                     </button>
-                    <button className="text-xs bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700">
+                    <button 
+                      onClick={() => {
+                        const phone = lead.buyerPhone.replace(/[^0-9]/g, '');
+                        window.open(`https://wa.me/${phone}`, '_blank');
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-[#25D366] text-white text-xs font-medium rounded-lg hover:bg-[#20BA5A] transition-colors shadow-sm"
+                    >
+                      <MessageCircle size={12} />
                       WhatsApp
+                    </button>
+                    <button 
+                      onClick={() => window.location.href = `mailto:${lead.buyerEmail}`}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-600 text-white text-xs font-medium rounded-lg hover:bg-gray-700 transition-colors shadow-sm"
+                    >
+                      <Mail size={12} />
+                      Email
                     </button>
                   </div>
                 </div>
@@ -196,45 +255,103 @@ const LeadDetailModal = ({ isOpen, onClose, lead, onUpdate }) => {
           <div className="bg-gray-50 p-5 rounded-lg border border-gray-200">
             <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
               <Package size={20} className="text-primary" />
-              Product Information
+              {lead._isBulkRFQ ? 'Products Information' : 'Product Information'}
             </h4>
-            <div className="space-y-3">
-              {lead.productId?.image && (
-                <img 
-                  src={lead.productId.image} 
-                  alt={lead.productName}
-                  className="w-full h-40 object-cover rounded-lg"
-                />
-              )}
-              <div>
-                <p className="text-xs text-gray-600">Product Name</p>
-                <p className="text-sm font-semibold text-gray-900">{lead.productName}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <p className="text-xs text-gray-600">Quantity</p>
-                  <p className="text-sm font-semibold text-gray-900">{lead.quantityRequired} units</p>
+            
+            {/* Handle Bulk RFQ - Multiple Products */}
+            {lead._isBulkRFQ && lead.items && Array.isArray(lead.items) && lead.items.length > 0 ? (
+              <div className="space-y-4">
+                <div className="bg-white p-3 rounded-lg border border-gray-200">
+                  <p className="text-xs text-gray-600 mb-1">Total Items</p>
+                  <p className="text-lg font-bold text-gray-900">{lead.items.length} Product{lead.items.length > 1 ? 's' : ''}</p>
+                  <p className="text-xs text-gray-600 mt-1">
+                    Total Quantity: {lead.items.reduce((sum, item) => sum + (item.quantityRequired || 0), 0)} units
+                  </p>
                 </div>
-                {lead.size && (
+                
+                <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
+                  {lead.items.map((item, index) => (
+                    <div key={index} className="bg-white p-4 rounded-lg border border-gray-200">
+                      <div className="flex items-start gap-3">
+                        {/* Product Image */}
+                        {item.productId?.image ? (
+                          <img 
+                            src={item.productId.image} 
+                            alt={item.productName}
+                            className="w-20 h-20 object-cover rounded-lg flex-shrink-0"
+                          />
+                        ) : (
+                          <div className="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <Package size={24} className="text-gray-400" />
+                          </div>
+                        )}
+                        
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 mb-2">{item.productName}</p>
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                              <p className="text-gray-600">Quantity</p>
+                              <p className="font-semibold text-gray-900">{item.quantityRequired} units</p>
+                            </div>
+                            {item.size && (
+                              <div>
+                                <p className="text-gray-600">Size</p>
+                                <p className="font-semibold text-gray-900">{item.size}</p>
+                              </div>
+                            )}
+                            {item.color && (
+                              <div>
+                                <p className="text-gray-600">Color</p>
+                                <p className="font-semibold text-gray-900">{item.color}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              /* Handle Single Product Lead */
+              <div className="space-y-3">
+                {lead.productId?.image && (
+                  <img 
+                    src={lead.productId.image} 
+                    alt={lead.productName}
+                    className="w-full h-40 object-cover rounded-lg"
+                  />
+                )}
+                <div>
+                  <p className="text-xs text-gray-600">Product Name</p>
+                  <p className="text-sm font-semibold text-gray-900">{lead.productName}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <p className="text-xs text-gray-600">Size</p>
-                    <p className="text-sm font-semibold text-gray-900">{lead.size}</p>
+                    <p className="text-xs text-gray-600">Quantity</p>
+                    <p className="text-sm font-semibold text-gray-900">{lead.quantityRequired} units</p>
+                  </div>
+                  {lead.size && (
+                    <div>
+                      <p className="text-xs text-gray-600">Size</p>
+                      <p className="text-sm font-semibold text-gray-900">{lead.size}</p>
+                    </div>
+                  )}
+                </div>
+                {lead.color && (
+                  <div>
+                    <p className="text-xs text-gray-600">Color Preference</p>
+                    <p className="text-sm font-semibold text-gray-900">{lead.color}</p>
+                  </div>
+                )}
+                {lead.productId?.moq && (
+                  <div>
+                    <p className="text-xs text-gray-600">Product MOQ</p>
+                    <p className="text-sm font-semibold text-gray-900">{lead.productId.moq} units</p>
                   </div>
                 )}
               </div>
-              {lead.color && (
-                <div>
-                  <p className="text-xs text-gray-600">Color Preference</p>
-                  <p className="text-sm font-semibold text-gray-900">{lead.color}</p>
-                </div>
-              )}
-              {lead.productId?.moq && (
-                <div>
-                  <p className="text-xs text-gray-600">Product MOQ</p>
-                  <p className="text-sm font-semibold text-gray-900">{lead.productId.moq} units</p>
-                </div>
-              )}
-            </div>
+            )}
           </div>
 
           {/* Inquiry Details */}
@@ -273,16 +390,29 @@ const LeadDetailModal = ({ isOpen, onClose, lead, onUpdate }) => {
                 <select
                   value={status}
                   onChange={(e) => setStatus(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white"
                 >
-                  <option value="new">New</option>
-                  <option value="contacted">Contacted</option>
-                  <option value="interested">Interested</option>
-                  <option value="quoted">Quoted</option>
-                  <option value="negotiating">Negotiating</option>
-                  <option value="closed">Closed</option>
-                  <option value="rejected">Rejected</option>
-                  <option value="lost">Lost</option>
+                  {lead._isBulkRFQ ? (
+                    <>
+                      <option value="new">New</option>
+                      <option value="in_progress">In Progress</option>
+                      <option value="quoted">Quoted</option>
+                      <option value="won">Won</option>
+                      <option value="lost">Lost</option>
+                      <option value="closed">Closed</option>
+                    </>
+                  ) : (
+                    <>
+                      <option value="new">New</option>
+                      <option value="contacted">Contacted</option>
+                      <option value="interested">Interested</option>
+                      <option value="quoted">Quoted</option>
+                      <option value="negotiating">Negotiating</option>
+                      <option value="closed">Closed</option>
+                      <option value="rejected">Rejected</option>
+                      <option value="lost">Lost</option>
+                    </>
+                  )}
                 </select>
               </div>
 
@@ -293,7 +423,7 @@ const LeadDetailModal = ({ isOpen, onClose, lead, onUpdate }) => {
                 <select
                   value={priority}
                   onChange={(e) => setPriority(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white"
                 >
                   <option value="low">Low</option>
                   <option value="medium">Medium</option>
@@ -331,7 +461,7 @@ const LeadDetailModal = ({ isOpen, onClose, lead, onUpdate }) => {
                   value={quotedPrice}
                   onChange={(e) => setQuotedPrice(e.target.value)}
                   placeholder="Enter quoted price"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white"
                 />
               </div>
 
@@ -344,7 +474,7 @@ const LeadDetailModal = ({ isOpen, onClose, lead, onUpdate }) => {
                   onChange={(e) => setQuoteNotes(e.target.value)}
                   placeholder="Add notes about the quote..."
                   rows="3"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none bg-white"
                 />
               </div>
 
@@ -372,7 +502,7 @@ const LeadDetailModal = ({ isOpen, onClose, lead, onUpdate }) => {
                   type="date"
                   value={followUpDate}
                   onChange={(e) => setFollowUpDate(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white"
                 />
               </div>
 
@@ -385,102 +515,73 @@ const LeadDetailModal = ({ isOpen, onClose, lead, onUpdate }) => {
                   onChange={(e) => setInternalNotes(e.target.value)}
                   placeholder="Add internal notes (not visible to buyer)..."
                   rows="3"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none bg-white"
                 />
               </div>
             </div>
           </div>
 
-          {/* Timeline */}
-          <div className="bg-gray-50 p-5 rounded-lg border border-gray-200">
-            <h4 className="font-bold text-gray-900 mb-4">Timeline</h4>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Created:</span>
-                <span className="font-semibold">{formatDate(lead.createdAt)}</span>
-              </div>
-              {lead.contactedAt && (
-                <div className="flex justify-between">
-                  <span className="text-gray-600">First Contacted:</span>
-                  <span className="font-semibold">{formatDate(lead.contactedAt)}</span>
-                </div>
-              )}
-              {lead.lastContactedAt && (
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Last Contacted:</span>
-                  <span className="font-semibold">{formatDate(lead.lastContactedAt)}</span>
-                </div>
-              )}
-              {lead.quotedAt && (
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Quoted:</span>
-                  <span className="font-semibold">{formatDate(lead.quotedAt)}</span>
-                </div>
-              )}
-            </div>
+        </div>
           </div>
         </div>
-      </div>
 
-      {/* Quick Actions */}
-      <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 rounded-b-lg">
+        {/* Footer Actions - Fixed at bottom */}
+        <div className="bg-white border-t border-gray-200 px-6 py-4 mt-auto">
+        {/* Quick Actions */}
         <div className="flex flex-wrap gap-2 mb-4">
-          <Button
-            variant="success"
-            size="small"
+          <button
             onClick={() => handleQuickAction('contacted')}
-            disabled={loading || lead.status === 'contacted'}
+            disabled={loading || (lead._isBulkRFQ ? lead.status === 'in_progress' : lead.status === 'contacted')}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-sm"
           >
             <PhoneCall size={16} />
             Mark as Contacted
-          </Button>
-          <Button
-            variant="primary"
-            size="small"
+          </button>
+          <button
             onClick={() => handleQuickAction('quoted')}
             disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-sm"
           >
             <FileText size={16} />
             Mark as Quoted
-          </Button>
-          <Button
-            variant="success"
-            size="small"
+          </button>
+          <button
             onClick={() => handleQuickAction('closed')}
             disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-sm"
           >
             <CheckCircle size={16} />
             Close Deal
-          </Button>
-          <Button
-            variant="danger"
-            size="small"
+          </button>
+          <button
             onClick={() => handleQuickAction('rejected')}
             disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-sm"
           >
             <X size={16} />
             Reject
-          </Button>
+          </button>
         </div>
 
         {/* Main Actions */}
-        <div className="flex justify-end gap-3">
-          <Button
-            variant="outline"
+        <div className="flex justify-end gap-3 pt-3 border-t border-gray-200">
+          <button
             onClick={onClose}
             disabled={loading}
+            className="px-6 py-2.5 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
           >
             Cancel
-          </Button>
-          <Button
-            variant="primary"
+          </button>
+          <button
             onClick={handleUpdate}
             disabled={loading}
+            className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
           >
             <Save size={18} />
             {loading ? 'Updating...' : 'Update Lead'}
-          </Button>
+          </button>
         </div>
+      </div>
       </div>
     </Modal>
   );

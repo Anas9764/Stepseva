@@ -16,6 +16,12 @@ const categorySchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    // Category type: 'b2c', 'b2b', or 'both' (available for both B2C and B2B)
+    categoryType: {
+      type: String,
+      enum: ['b2c', 'b2b', 'both'],
+      default: 'b2c', // Default to B2C for backward compatibility
+    },
   },
   {
     timestamps: true,

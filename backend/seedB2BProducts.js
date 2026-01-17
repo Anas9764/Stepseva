@@ -37,7 +37,6 @@ const b2bProducts = [
     moq: 5, // Minimum order quantity
     bulkPricingEnabled: true,
     productType: 'b2b', // B2B only product
-    productType: 'b2b', // B2B only product
     brand: 'StepSeva',
     gender: 'ladies',
     footwearType: 'sneakers',

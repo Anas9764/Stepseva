@@ -68,7 +68,7 @@ const Orders = () => {
     params.limit = itemsPerPage;
     
     dispatch(fetchOrders(params));
-  }, [dispatch, statusFilter, paymentTypeFilter, paymentStatusFilter, dateRangeFilter, amountRangeFilter, searchQuery, currentPage, itemsPerPage]);
+  }, [dispatch, statusFilter, paymentTypeFilter, paymentStatusFilter, dateRangeFilter, amountRangeFilter, searchQuery, currentPage]); // Removed itemsPerPage as it's constant
 
   // Mark orders as seen when page loads
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { reviewService } from '../services/reviewService';
 import Table from '../components/Table';
 import Button from '../components/Button';
@@ -29,65 +29,11 @@ const Reviews = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { markReviewsAsSeen, notificationItems, markAsRead } = useNotifications();
 
-  useEffect(() => {
-    fetchReviews();
-  }, [currentPage, filters]);
+  // Track last fetch time to prevent excessive calls
+  const lastFetchRef = useRef(Date.now());
+  const MIN_FETCH_INTERVAL = 30000; // 30 seconds minimum between fetches
 
-  // Mark reviews as seen when page loads (separate effect to avoid dependency issues)
-  useEffect(() => {
-    markReviewsAsSeen();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount
-
-  // Mark review notifications as read when viewing reviews page (separate effect to avoid loops)
-  useEffect(() => {
-    const unreadReviewNotifications = notificationItems.filter(n => n.type === 'review' && !n.read);
-    if (unreadReviewNotifications.length > 0) {
-      unreadReviewNotifications.forEach(n => markAsRead(n.id));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount
-
-  // Smart refresh: Only check for updates when tab becomes visible
-  useEffect(() => {
-    let intervalId;
-    let lastCheckTime = Date.now();
-
-    // Function to check if we should refresh (only if tab is visible)
-    const checkForUpdates = () => {
-      if (document.visibilityState === 'visible') {
-        const timeSinceLastCheck = Date.now() - lastCheckTime;
-        // Only refresh if it's been more than 3 minutes since last check
-        if (timeSinceLastCheck > 180000) {
-          fetchReviews();
-          lastCheckTime = Date.now();
-        }
-      }
-    };
-
-    // Check when tab becomes visible
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        // Refresh when admin comes back to the tab
-        fetchReviews();
-        lastCheckTime = Date.now();
-      }
-    };
-
-    // Set up interval to check every 3 minutes (only if tab is visible)
-    intervalId = setInterval(checkForUpdates, 180000); // 3 minutes
-
-    // Listen for visibility changes
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      clearInterval(intervalId);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, filters]);
-
-  const fetchReviews = async () => {
+  const fetchReviews = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -118,7 +64,83 @@ const Reviews = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, filters, itemsPerPage]);
+
+  useEffect(() => {
+    const now = Date.now();
+    const timeSinceLastFetch = now - lastFetchRef.current;
+    
+    // Only fetch if enough time has passed since last fetch
+    if (timeSinceLastFetch >= MIN_FETCH_INTERVAL) {
+      fetchReviews();
+      lastFetchRef.current = now;
+    }
+  }, [fetchReviews]);
+
+  // Mark reviews as seen when page loads (separate effect to avoid dependency issues)
+  useEffect(() => {
+    markReviewsAsSeen();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
+
+  // Mark review notifications as read when viewing reviews page (separate effect to avoid loops)
+  useEffect(() => {
+    const unreadReviewNotifications = notificationItems.filter(n => n.type === 'review' && !n.read);
+    if (unreadReviewNotifications.length > 0) {
+      unreadReviewNotifications.forEach(n => markAsRead(n.id));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
+
+  // Smart refresh: Only check for updates when tab becomes visible (with throttling)
+  useEffect(() => {
+    let intervalId;
+    let lastCheckTime = Date.now();
+    const REFRESH_INTERVAL = 180000; // 3 minutes
+
+    // Function to check if we should refresh (only if tab is visible)
+    const checkForUpdates = () => {
+      if (document.visibilityState === 'visible') {
+        const timeSinceLastCheck = Date.now() - lastCheckTime;
+        // Only refresh if it's been more than 3 minutes since last check
+        if (timeSinceLastCheck > REFRESH_INTERVAL) {
+          const timeSinceLastFetch = Date.now() - lastFetchRef.current;
+          // Also check minimum fetch interval
+          if (timeSinceLastFetch >= MIN_FETCH_INTERVAL) {
+            fetchReviews();
+            lastCheckTime = Date.now();
+            lastFetchRef.current = Date.now();
+          }
+        }
+      }
+    };
+
+    // Check when tab becomes visible (with throttling)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        const timeSinceLastCheck = Date.now() - lastCheckTime;
+        const timeSinceLastFetch = Date.now() - lastFetchRef.current;
+        // Only refresh if enough time has passed
+        if (timeSinceLastCheck > REFRESH_INTERVAL && timeSinceLastFetch >= MIN_FETCH_INTERVAL) {
+          fetchReviews();
+          lastCheckTime = Date.now();
+          lastFetchRef.current = Date.now();
+        }
+      }
+    };
+
+    // Set up interval to check every 3 minutes (only if tab is visible)
+    intervalId = setInterval(checkForUpdates, REFRESH_INTERVAL);
+
+    // Listen for visibility changes
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchReviews]); // Include fetchReviews in deps
 
   const handleApprove = async (reviewId, isApproved) => {
     try {

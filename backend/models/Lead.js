@@ -74,7 +74,7 @@ const leadSchema = new mongoose.Schema(
     // Inquiry Details
     inquiryType: {
       type: String,
-      enum: ['get_best_price', 'contact_supplier', 'bulk_order', 'customization', 'other'],
+      enum: ['get_best_price', 'request_callback', 'contact_supplier', 'bulk_order', 'customization', 'other'],
       default: 'get_best_price',
     },
     notes: {

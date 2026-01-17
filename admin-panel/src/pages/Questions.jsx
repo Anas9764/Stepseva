@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { questionService } from '../services/questionService';
 import Table from '../components/Table';
 import Button from '../components/Button';
@@ -29,56 +29,11 @@ const Questions = () => {
   const [submittingAnswer, setSubmittingAnswer] = useState(false);
   const { markQuestionsAsSeen, notificationItems, markAsRead } = useNotifications();
 
-  useEffect(() => {
-    fetchQuestions();
-    // Mark questions as seen when page loads
-    markQuestionsAsSeen();
-    // Mark all question notifications as read when viewing questions page
-    notificationItems
-      .filter(n => n.type === 'question' && !n.read)
-      .forEach(n => markAsRead(n.id));
-  }, [currentPage, filters, markQuestionsAsSeen, notificationItems, markAsRead]);
+  // Track last fetch time to prevent excessive calls
+  const lastFetchRef = useRef(Date.now());
+  const MIN_FETCH_INTERVAL = 30000; // 30 seconds minimum between fetches
 
-  // Smart refresh: Only check for updates when tab becomes visible
-  useEffect(() => {
-    let intervalId;
-    let lastCheckTime = Date.now();
-
-    // Function to check if we should refresh (only if tab is visible)
-    const checkForUpdates = () => {
-      if (document.visibilityState === 'visible') {
-        const timeSinceLastCheck = Date.now() - lastCheckTime;
-        // Only refresh if it's been more than 3 minutes since last check
-        if (timeSinceLastCheck > 180000) {
-          fetchQuestions();
-          lastCheckTime = Date.now();
-        }
-      }
-    };
-
-    // Check when tab becomes visible
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        // Refresh when admin comes back to the tab
-        fetchQuestions();
-        lastCheckTime = Date.now();
-      }
-    };
-
-    // Set up interval to check every 3 minutes (only if tab is visible)
-    intervalId = setInterval(checkForUpdates, 180000); // 3 minutes
-
-    // Listen for visibility changes
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      clearInterval(intervalId);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, filters]);
-
-  const fetchQuestions = async () => {
+  const fetchQuestions = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -109,7 +64,77 @@ const Questions = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, filters, itemsPerPage]);
+
+  useEffect(() => {
+    const now = Date.now();
+    const timeSinceLastFetch = now - lastFetchRef.current;
+    
+    // Only fetch if enough time has passed since last fetch
+    if (timeSinceLastFetch >= MIN_FETCH_INTERVAL) {
+      fetchQuestions();
+      lastFetchRef.current = now;
+    }
+  }, [fetchQuestions]);
+
+  // Mark questions as seen when page loads (separate effect to avoid dependency issues)
+  useEffect(() => {
+    markQuestionsAsSeen();
+    // Mark all question notifications as read when viewing questions page
+    notificationItems
+      .filter(n => n.type === 'question' && !n.read)
+      .forEach(n => markAsRead(n.id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
+
+  // Smart refresh: Only check for updates when tab becomes visible (with throttling)
+  useEffect(() => {
+    let intervalId;
+    let lastCheckTime = Date.now();
+    const REFRESH_INTERVAL = 180000; // 3 minutes
+
+    // Function to check if we should refresh (only if tab is visible)
+    const checkForUpdates = () => {
+      if (document.visibilityState === 'visible') {
+        const timeSinceLastCheck = Date.now() - lastCheckTime;
+        // Only refresh if it's been more than 3 minutes since last check
+        if (timeSinceLastCheck > REFRESH_INTERVAL) {
+          const timeSinceLastFetch = Date.now() - lastFetchRef.current;
+          // Also check minimum fetch interval
+          if (timeSinceLastFetch >= MIN_FETCH_INTERVAL) {
+            fetchQuestions();
+            lastCheckTime = Date.now();
+            lastFetchRef.current = Date.now();
+          }
+        }
+      }
+    };
+
+    // Check when tab becomes visible (with throttling)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        const timeSinceLastCheck = Date.now() - lastCheckTime;
+        const timeSinceLastFetch = Date.now() - lastFetchRef.current;
+        // Only refresh if enough time has passed
+        if (timeSinceLastCheck > REFRESH_INTERVAL && timeSinceLastFetch >= MIN_FETCH_INTERVAL) {
+          fetchQuestions();
+          lastCheckTime = Date.now();
+          lastFetchRef.current = Date.now();
+        }
+      }
+    };
+
+    // Set up interval to check every 3 minutes (only if tab is visible)
+    intervalId = setInterval(checkForUpdates, REFRESH_INTERVAL);
+
+    // Listen for visibility changes
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [fetchQuestions]); // Include fetchQuestions to use latest version
 
   const handleDeleteQuestion = async (questionId) => {
     if (!window.confirm('Are you sure you want to delete this question?')) {

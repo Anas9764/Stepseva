@@ -5,7 +5,65 @@ const Banner = require('../models/Banner');
 // @access  Public
 exports.getAllBanners = async (req, res, next) => {
   try {
-    const banners = await Banner.find({ isActive: true })
+    const now = new Date();
+    const placement = (req.query.placement || '').trim();
+    const bannerType = (req.query.bannerType || '').trim(); // Optional: b2b, b2c, both
+
+    // Build bannerType filter
+    let bannerTypeCondition = {};
+    if (bannerType) {
+      if (bannerType === 'b2b') {
+        bannerTypeCondition = {
+          $or: [
+            { bannerType: 'b2b' },
+            { bannerType: 'both' },
+            { bannerType: { $exists: false } }, // Backward compatibility
+            { bannerType: null },
+          ],
+        };
+      } else if (bannerType === 'b2c') {
+        bannerTypeCondition = {
+          $or: [
+            { bannerType: 'b2c' },
+            { bannerType: 'both' },
+            { bannerType: { $exists: false } }, // Backward compatibility
+            { bannerType: null },
+          ],
+        };
+      } else {
+        bannerTypeCondition = { bannerType: bannerType };
+      }
+    } else {
+      // Default: For business frontend (B2B), show B2B and both banners
+      bannerTypeCondition = {
+        $or: [
+          { bannerType: 'b2b' },
+          { bannerType: 'both' },
+          { bannerType: { $exists: false } }, // Backward compatibility
+          { bannerType: null },
+        ],
+      };
+    }
+
+    // Combine all filters using $and to properly merge conditions
+    const query = {
+      isActive: true,
+      $and: [
+        {
+          $or: [{ startAt: null }, { startAt: { $lte: now } }],
+        },
+        {
+          $or: [{ endAt: null }, { endAt: { $gte: now } }],
+        },
+        bannerTypeCondition,
+      ],
+    };
+
+    if (placement) {
+      query.placement = placement;
+    }
+
+    const banners = await Banner.find(query)
       .sort({ priority: 1, createdAt: -1 })
       .lean();
 
@@ -65,7 +123,7 @@ exports.getBannerById = async (req, res, next) => {
 // @access  Private/Admin
 exports.createBanner = async (req, res, next) => {
   try {
-    const { title, subtitle, image, ctaText, ctaLink, priority, isActive } = req.body;
+    const { title, subtitle, image, ctaText, ctaLink, priority, isActive, placement, startAt, endAt, bannerType } = req.body;
 
     const banner = await Banner.create({
       title,
@@ -73,6 +131,10 @@ exports.createBanner = async (req, res, next) => {
       image,
       ctaText,
       ctaLink,
+      placement: placement || 'global',
+      bannerType: bannerType || 'b2c', // Default to 'b2c' if not provided
+      startAt: startAt || null,
+      endAt: endAt || null,
       priority: priority || 0,
       isActive: isActive !== false,
     });
@@ -101,7 +163,13 @@ exports.updateBanner = async (req, res, next) => {
       });
     }
 
-    banner = await Banner.findByIdAndUpdate(req.params.id, req.body, {
+    const update = { ...req.body };
+
+    if (typeof update.placement === 'undefined' || update.placement === '') {
+      delete update.placement;
+    }
+
+    banner = await Banner.findByIdAndUpdate(req.params.id, update, {
       new: true,
       runValidators: true,
     });

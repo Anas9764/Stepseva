@@ -40,6 +40,12 @@ api.interceptors.request.use(
     const token = localStorage.getItem('adminToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      // Log token presence for debugging (remove in production)
+      if (import.meta.env.DEV) {
+        console.log('🔑 Adding token to request:', config.url, token ? 'Token present' : 'No token');
+      }
+    } else {
+      console.warn('⚠️ No adminToken found in localStorage for request:', config.url);
     }
     return config;
   },
@@ -56,10 +62,17 @@ api.interceptors.response.use(
       const { status, data } = error.response;
       
       if (status === 401) {
-        localStorage.removeItem('adminToken');
-        localStorage.removeItem('adminUser');
-        window.location.href = '/login';
-        toast.error('Session expired. Please login again.');
+        console.error('❌ 401 Unauthorized - Token may be missing, invalid, or expired');
+        console.error('Request URL:', error.config?.url);
+        console.error('Token present:', !!localStorage.getItem('adminToken'));
+        
+        // Only redirect if we're not already on the login page
+        if (window.location.pathname !== '/login') {
+          localStorage.removeItem('adminToken');
+          localStorage.removeItem('adminUser');
+          window.location.href = '/login';
+          toast.error('Session expired. Please login again.');
+        }
       } else if (status === 403) {
         toast.error('You do not have permission to perform this action.');
       } else if (data?.message) {

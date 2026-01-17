@@ -11,7 +11,8 @@ import {
   FileText,
   Mail,
   UserPlus,
-  File
+  File,
+  ArrowUpDown
 } from 'lucide-react';
 import Button from './Button';
 import Modal from './Modal';
@@ -65,11 +66,12 @@ const BulkActions = ({
       <motion.div
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="bg-primary/10 border border-primary/20 rounded-lg p-4 mb-4"
+        className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 mb-4"
       >
         <div className="flex items-center justify-between flex-wrap gap-4">
+          {/* Left side - Badge and count */}
           <div className="flex items-center gap-3">
-            <div className="bg-primary text-white rounded-full w-8 h-8 flex items-center justify-center font-semibold">
+            <div className="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-semibold text-sm">
               {selectedCount}
             </div>
             <span className="text-sm font-medium text-gray-700">
@@ -77,73 +79,71 @@ const BulkActions = ({
             </span>
           </div>
 
+          {/* Right side - Action buttons */}
           <div className="flex items-center gap-2 flex-wrap">
-            {showDelete && onBulkDelete && (
-              <Button
-                variant="danger"
-                size="small"
-                onClick={handleBulkDelete}
-              >
-                <Trash2 size={16} />
-                Delete
-              </Button>
-            )}
-
             {showStatusUpdate && onBulkStatusUpdate && availableStatuses.length > 0 && (
-              <Button
-                variant="primary"
-                size="small"
+              <button
                 onClick={() => setShowStatusModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm shadow-sm"
               >
                 <CheckCircle size={16} />
                 Update Status
-              </Button>
+              </button>
             )}
 
             {showExport && onBulkExport && (
-              <Button
-                variant="secondary"
-                size="small"
+              <button
                 onClick={onBulkExport}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm shadow-sm"
               >
                 <Download size={16} />
                 Export Excel
-              </Button>
+              </button>
             )}
 
             {showExportPDF && onBulkExportPDF && (
-              <Button
-                variant="secondary"
-                size="small"
+              <button
                 onClick={onBulkExportPDF}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm shadow-sm"
               >
-                <File size={16} />
+                <FileText size={16} />
                 Export PDF
-              </Button>
+              </button>
+            )}
+
+            {showDelete && onBulkDelete && (
+              <button
+                onClick={handleBulkDelete}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm shadow-sm"
+              >
+                <Trash2 size={16} />
+                Delete
+              </button>
             )}
 
             {showAssign && onBulkAssign && (
-              <Button
-                variant="secondary"
-                size="small"
+              <button
                 onClick={() => setShowAssignModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm shadow-sm"
               >
                 <UserPlus size={16} />
                 Assign
-              </Button>
+              </button>
             )}
 
-            {customActions.map((action, index) => (
-              <Button
-                key={index}
-                variant={action.variant || 'secondary'}
-                size="small"
-                onClick={action.onClick}
-              >
-                {action.icon && <action.icon size={16} />}
-                {action.label}
-              </Button>
-            ))}
+            {customActions.map((action, index) => {
+              const IconComponent = action.icon;
+              return (
+                <button
+                  key={index}
+                  onClick={action.onClick}
+                  className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm shadow-sm"
+                >
+                  {IconComponent && <IconComponent size={16} />}
+                  {action.label}
+                </button>
+              );
+            })}
           </div>
         </div>
       </motion.div>

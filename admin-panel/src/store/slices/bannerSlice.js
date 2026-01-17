@@ -10,11 +10,22 @@ const initialState = {
 
 export const fetchBanners = createAsyncThunk(
   'banners/fetchAll',
-  async (_, { rejectWithValue }) => {
+  async (section = null, { rejectWithValue }) => {
     try {
-      const response = await bannerService.getAllBanners();
-      return response.data || response;
+      const response = await bannerService.getAllBanners(section);
+      console.log('📦 Banners received in thunk:', response);
+      // Service returns { success: true, data: [...] }
+      if (response && response.success && Array.isArray(response.data)) {
+        return response.data;
+      }
+      // Fallback: if data is directly an array
+      if (Array.isArray(response)) {
+        return response;
+      }
+      // If structure is different, return data property or empty array
+      return response?.data || response || [];
     } catch (error) {
+      console.error('❌ Error fetching banners:', error);
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch banners');
     }
   }
@@ -22,10 +33,10 @@ export const fetchBanners = createAsyncThunk(
 
 export const createBanner = createAsyncThunk(
   'banners/create',
-  async (bannerData, { rejectWithValue }) => {
+  async ({ bannerData, section = null }, { rejectWithValue }) => {
     try {
-      const response = await bannerService.createBanner(bannerData);
-      return response.data;
+      const response = await bannerService.createBanner(bannerData, section);
+      return response.data || response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to create banner');
     }
@@ -34,10 +45,10 @@ export const createBanner = createAsyncThunk(
 
 export const updateBanner = createAsyncThunk(
   'banners/update',
-  async ({ id, bannerData }, { rejectWithValue }) => {
+  async ({ id, bannerData, section = null }, { rejectWithValue }) => {
     try {
-      const response = await bannerService.updateBanner(id, bannerData);
-      return response.data;
+      const response = await bannerService.updateBanner(id, bannerData, section);
+      return response.data || response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to update banner');
     }
@@ -46,9 +57,9 @@ export const updateBanner = createAsyncThunk(
 
 export const deleteBanner = createAsyncThunk(
   'banners/delete',
-  async (id, { rejectWithValue }) => {
+  async ({ id, section = null }, { rejectWithValue }) => {
     try {
-      await bannerService.deleteBanner(id);
+      await bannerService.deleteBanner(id, section);
       return id;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to delete banner');
@@ -76,7 +87,8 @@ const bannerSlice = createSlice({
       })
       .addCase(fetchBanners.fulfilled, (state, action) => {
         state.loading = false;
-        state.banners = action.payload;
+        console.log('✅ Banners fetched successfully, count:', action.payload?.length || 0);
+        state.banners = Array.isArray(action.payload) ? action.payload : [];
       })
       .addCase(fetchBanners.rejected, (state, action) => {
         state.loading = false;
@@ -88,7 +100,11 @@ const bannerSlice = createSlice({
       })
       .addCase(createBanner.fulfilled, (state, action) => {
         state.loading = false;
-        state.banners.unshift(action.payload);
+        // Backend returns { success: true, data: banner }
+        const newBanner = action.payload?.data || action.payload;
+        if (newBanner) {
+          state.banners.unshift(newBanner);
+        }
       })
       .addCase(createBanner.rejected, (state, action) => {
         state.loading = false;
@@ -100,9 +116,13 @@ const bannerSlice = createSlice({
       })
       .addCase(updateBanner.fulfilled, (state, action) => {
         state.loading = false;
-        const index = state.banners.findIndex((b) => b._id === action.payload._id);
-        if (index !== -1) {
-          state.banners[index] = action.payload;
+        // Backend returns { success: true, data: banner }
+        const updatedBanner = action.payload?.data || action.payload;
+        if (updatedBanner) {
+          const index = state.banners.findIndex((b) => b._id === updatedBanner._id);
+          if (index !== -1) {
+            state.banners[index] = updatedBanner;
+          }
         }
       })
       .addCase(updateBanner.rejected, (state, action) => {

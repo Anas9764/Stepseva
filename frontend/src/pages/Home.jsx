@@ -58,8 +58,8 @@ const Home = () => {
   }, []);
   const fetchHeroBanners = async () => {
     try {
-      // bannerService.getActiveBanners() now returns the array directly
-      const banners = await bannerService.getActiveBanners();
+      // Fetch B2C hero banners with placement filter
+      const banners = await bannerService.getActiveBanners({ placement: 'b2c_home_hero' });
       
       // Ensure banners is an array
       const bannersArray = Array.isArray(banners) ? banners : [];

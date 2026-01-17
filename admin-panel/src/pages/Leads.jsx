@@ -1,13 +1,14 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchLeads, fetchLeadStats, updateLead, setCurrentLead } from '../store/slices/leadsSlice';
+import bulkRfqService from '../services/bulkRfqService';
 import Table from '../components/Table';
 import BulkActions from '../components/BulkActions';
 import Button from '../components/Button';
 import SearchInput from '../components/SearchInput';
 import Loader from '../components/Loader';
 import Pagination from '../components/Pagination';
-import { Eye, Filter, X, Download, Phone, Mail, Briefcase, AlertCircle, TrendingUp, Users, CheckCircle } from 'lucide-react';
+import { Eye, Filter, X, Download, Phone, Mail, Briefcase, AlertCircle, TrendingUp, Users, CheckCircle, Package, MessageCircle, ArrowUpDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import LeadDetailModal from '../components/Leads/LeadDetailModal';
@@ -18,22 +19,36 @@ import { exportLeadsToPDF } from '../utils/pdfExport';
 
 const Leads = () => {
   const dispatch = useDispatch();
-  const { leads, loading, pagination, stats } = useSelector((state) => state.leads);
+  const { leads: reduxLeads, loading: leadsLoading, pagination: leadsPagination, stats } = useSelector((state) => state.leads);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
   const [businessTypeFilter, setBusinessTypeFilter] = useState('');
   const [dateRangeFilter, setDateRangeFilter] = useState({ start: '', end: '' });
+  const [inquiryTypeFilter, setInquiryTypeFilter] = useState(''); // 'single', 'bulk', or '' for all
   const [selectedLead, setSelectedLead] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
   const [selectedLeads, setSelectedLeads] = useState([]);
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+  const [bulkRFQs, setBulkRFQs] = useState([]);
+  const [bulkRFQsLoading, setBulkRFQsLoading] = useState(false);
+  const [bulkRFQsPagination, setBulkRFQsPagination] = useState({ page: 1, limit: 20, total: 0, pages: 1 });
   const itemsPerPage = 20;
+  
+  // Combined leads (single + bulk RFQs)
+  const [combinedLeads, setCombinedLeads] = useState([]);
+  const [combinedPagination, setCombinedPagination] = useState({ page: 1, limit: 20, total: 0, pages: 1 });
+  const loading = leadsLoading || bulkRFQsLoading;
 
-  // Fetch leads on mount and when filters change
+  // Fetch single product leads
   useEffect(() => {
+    if (inquiryTypeFilter === 'bulk') {
+      // Skip fetching single leads if only bulk RFQs are requested
+      return;
+    }
+    
     const params = {};
     if (statusFilter) params.status = statusFilter;
     if (priorityFilter) params.priority = priorityFilter;
@@ -45,7 +60,117 @@ const Leads = () => {
     params.limit = itemsPerPage;
     
     dispatch(fetchLeads(params));
-  }, [dispatch, statusFilter, priorityFilter, businessTypeFilter, dateRangeFilter, searchQuery, currentPage]);
+  }, [dispatch, statusFilter, priorityFilter, businessTypeFilter, dateRangeFilter, searchQuery, currentPage, inquiryTypeFilter]);
+
+  // Fetch bulk RFQs
+  useEffect(() => {
+    if (inquiryTypeFilter === 'single') {
+      // Skip fetching bulk RFQs if only single leads are requested
+      return;
+    }
+    
+    const fetchBulkRFQs = async () => {
+      try {
+        setBulkRFQsLoading(true);
+        const params = {
+          page: currentPage,
+          limit: itemsPerPage,
+        };
+        if (statusFilter) params.status = statusFilter;
+        if (searchQuery) params.q = searchQuery;
+        
+        const response = await bulkRfqService.getAll(params);
+        const rfqData = Array.isArray(response.data) ? response.data : [];
+        const paginationData = response.pagination || { page: 1, limit: 20, total: 0, pages: 1 };
+        
+        // Transform bulk RFQs to match lead structure for unified display
+        const transformedRFQs = rfqData.map(rfq => ({
+          ...rfq,
+          _isBulkRFQ: true, // Flag to identify bulk RFQs
+          // Keep original status for modal, but also add displayStatus for table badges
+          _originalStatus: rfq.status, // Store original for modal
+          // Map bulk RFQ status to lead status for badge display consistency
+          status: rfq.status === 'in_progress' ? 'contacted' : 
+                  rfq.status === 'won' ? 'closed' : 
+                  rfq.status === 'lost' ? 'lost' : rfq.status,
+        }));
+        
+        setBulkRFQs(transformedRFQs);
+        setBulkRFQsPagination(paginationData);
+      } catch (error) {
+        console.error('Error fetching bulk RFQs:', error);
+        toast.error('Failed to fetch bulk RFQs');
+        setBulkRFQs([]);
+      } finally {
+        setBulkRFQsLoading(false);
+      }
+    };
+    
+    fetchBulkRFQs();
+  }, [statusFilter, searchQuery, currentPage, inquiryTypeFilter]);
+
+  // Combine leads and bulk RFQs
+  useEffect(() => {
+    let combined = [];
+    
+    if (inquiryTypeFilter === 'single') {
+      // Only single product leads
+      combined = reduxLeads.map(lead => ({ ...lead, _isBulkRFQ: false }));
+    } else if (inquiryTypeFilter === 'bulk') {
+      // Only bulk RFQs
+      combined = bulkRFQs;
+    } else if (inquiryTypeFilter === 'get_quote') {
+      // Only "Get Best Quote" requests
+      const singleLeads = reduxLeads
+        .filter(lead => lead.inquiryType === 'get_best_price' || lead.inquiryType === 'get_best_quote')
+        .map(lead => ({ ...lead, _isBulkRFQ: false }));
+      combined = singleLeads;
+    } else if (inquiryTypeFilter === 'call_back') {
+      // Only "Call Back" requests
+      const singleLeads = reduxLeads
+        .filter(lead => lead.inquiryType === 'request_callback' || lead.inquiryType === 'callback')
+        .map(lead => ({ ...lead, _isBulkRFQ: false }));
+      combined = singleLeads;
+    } else if (inquiryTypeFilter === 'customization') {
+      // Only "Custom Quote" requests
+      const singleLeads = reduxLeads
+        .filter(lead => lead.inquiryType === 'customization')
+        .map(lead => ({ ...lead, _isBulkRFQ: false }));
+      combined = singleLeads;
+    } else {
+      // Combine both
+      const singleLeads = reduxLeads.map(lead => ({ ...lead, _isBulkRFQ: false }));
+      combined = [...singleLeads, ...bulkRFQs];
+    }
+    
+    // Sort by creation date (newest first)
+    combined.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    
+    setCombinedLeads(combined);
+    
+    // Calculate combined pagination
+    const totalLeads = leadsPagination.total || 0;
+    const totalBulkRFQs = bulkRFQsPagination.total || 0;
+    let total = 0;
+    
+    if (inquiryTypeFilter === 'single') {
+      total = totalLeads;
+    } else if (inquiryTypeFilter === 'bulk') {
+      total = totalBulkRFQs;
+    } else if (inquiryTypeFilter === 'get_quote' || inquiryTypeFilter === 'call_back' || inquiryTypeFilter === 'customization') {
+      // For filtered single leads, use the filtered count
+      total = combined.length;
+    } else {
+      total = totalLeads + totalBulkRFQs;
+    }
+    
+    setCombinedPagination({
+      page: currentPage,
+      limit: itemsPerPage,
+      total,
+      pages: Math.ceil(total / itemsPerPage),
+    });
+  }, [reduxLeads, bulkRFQs, inquiryTypeFilter, leadsPagination, bulkRFQsPagination, currentPage]);
 
   // Fetch statistics
   useEffect(() => {
@@ -91,6 +216,7 @@ const Leads = () => {
     setBusinessTypeFilter('');
     setDateRangeFilter({ start: '', end: '' });
     setSearchQuery('');
+    setInquiryTypeFilter('');
     setCurrentPage(1);
   };
 
@@ -248,8 +374,8 @@ const Leads = () => {
 
   const columns = [
     {
-      key: 'createdAt',
-      label: 'Date/Time',
+      header: 'Date/Time',
+      accessor: 'createdAt',
       render: (lead) => (
         <div>
           <div className="text-sm font-medium text-gray-900">{formatTimeAgo(lead.createdAt)}</div>
@@ -258,21 +384,64 @@ const Leads = () => {
       ),
     },
     {
-      key: 'buyerName',
-      label: 'Buyer',
-      render: (lead) => (
-        <div>
-          <div className="text-sm font-semibold text-gray-900">{lead.buyerName}</div>
-          {lead.companyName && (
-            <div className="text-xs text-gray-600">{lead.companyName}</div>
-          )}
-          <div className="text-xs text-gray-500 capitalize">{lead.businessType}</div>
-        </div>
-      ),
+      header: 'Buyer',
+      accessor: 'buyerName',
+      render: (lead) => {
+        // Determine inquiry type badge
+        const getInquiryTypeBadge = () => {
+          if (lead._isBulkRFQ) {
+            return (
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                Bulk
+              </span>
+            );
+          }
+          
+          // For single leads, check inquiryType
+          if (lead.inquiryType === 'get_best_price' || lead.inquiryType === 'get_best_quote') {
+            return (
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                Get Quote
+              </span>
+            );
+          }
+          
+          if (lead.inquiryType === 'request_callback' || lead.inquiryType === 'callback') {
+            return (
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                Call Back
+              </span>
+            );
+          }
+          
+          if (lead.inquiryType === 'customization') {
+            return (
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800">
+                Custom Quote
+              </span>
+            );
+          }
+          
+          return null;
+        };
+
+        return (
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="text-sm font-semibold text-gray-900">{lead.buyerName}</div>
+              {getInquiryTypeBadge()}
+            </div>
+            {lead.companyName && (
+              <div className="text-xs text-gray-600">{lead.companyName}</div>
+            )}
+            <div className="text-xs text-gray-500 capitalize">{lead.businessType}</div>
+          </div>
+        );
+      },
     },
     {
-      key: 'contact',
-      label: 'Contact',
+      header: 'Contact',
+      accessor: 'contact',
       render: (lead) => (
         <div className="text-sm">
           <div className="flex items-center gap-1 text-gray-700">
@@ -287,66 +456,61 @@ const Leads = () => {
       ),
     },
     {
-      key: 'product',
-      label: 'Product',
-      render: (lead) => (
-        <div className="flex items-center gap-2">
-          {lead.productId?.image && (
-            <img 
-              src={lead.productId.image} 
-              alt={lead.productName}
-              className="w-10 h-10 object-cover rounded"
-            />
-          )}
-          <div>
-            <div className="text-sm font-medium text-gray-900 truncate max-w-[200px]" title={lead.productName}>
-              {lead.productName}
+      header: 'Product',
+      accessor: 'product',
+      render: (lead) => {
+        // Handle bulk RFQ (multiple products)
+        if (lead._isBulkRFQ && lead.items && Array.isArray(lead.items)) {
+          return (
+            <div className="flex items-center gap-2">
+              <Package size={16} className="text-primary" />
+              <div>
+                <div className="text-sm font-medium text-gray-900">
+                  {lead.items.length} Product{lead.items.length > 1 ? 's' : ''}
+                </div>
+                <div className="text-xs text-gray-600">
+                  Total Qty: {lead.items.reduce((sum, item) => sum + (item.quantityRequired || 0), 0)}
+                </div>
+              </div>
             </div>
-            <div className="text-xs text-gray-600">
-              Qty: {lead.quantityRequired}
+          );
+        }
+        
+        // Handle single product lead
+        return (
+          <div className="flex items-center gap-2">
+            {lead.productId?.image && (
+              <img 
+                src={lead.productId.image} 
+                alt={lead.productName}
+                className="w-10 h-10 object-cover rounded"
+              />
+            )}
+            <div>
+              <div className="text-sm font-medium text-gray-900 truncate max-w-[200px]" title={lead.productName}>
+                {lead.productName}
+              </div>
+              <div className="text-xs text-gray-600">
+                Qty: {lead.quantityRequired}
+              </div>
             </div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
-      key: 'status',
-      label: 'Status',
+      header: 'Status',
+      accessor: 'status',
       render: (lead) => <LeadStatusBadge status={lead.status} />,
     },
     {
-      key: 'priority',
-      label: 'Priority',
+      header: 'Priority',
+      accessor: 'priority',
       render: (lead) => <LeadPriorityBadge priority={lead.priority} />,
-    },
-    {
-      key: 'actions',
-      label: 'Actions',
-      render: (lead) => (
-        <div className="flex items-center gap-2">
-          <Button
-            variant="primary"
-            size="small"
-            onClick={() => handleViewDetails(lead)}
-          >
-            <Eye size={16} />
-          </Button>
-          {lead.status === 'new' && (
-            <Button
-              variant="success"
-              size="small"
-              onClick={() => handleMarkContacted(lead._id)}
-              title="Mark as Contacted"
-            >
-              <Phone size={16} />
-            </Button>
-          )}
-        </div>
-      ),
     },
   ];
 
-  const activeFiltersCount = [statusFilter, priorityFilter, businessTypeFilter, dateRangeFilter.start, dateRangeFilter.end, searchQuery].filter(Boolean).length;
+  const activeFiltersCount = [statusFilter, priorityFilter, businessTypeFilter, dateRangeFilter.start, dateRangeFilter.end, searchQuery, inquiryTypeFilter].filter(Boolean).length;
 
   return (
     <div className="space-y-6">
@@ -355,7 +519,7 @@ const Leads = () => {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">B2B Leads</h1>
           <p className="mt-1 text-sm text-gray-600">
-            Manage buyer inquiries and business leads
+            Manage all buyer inquiries - single product leads and bulk RFQs
           </p>
         </div>
       </div>
@@ -525,6 +689,24 @@ const Leads = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
+                Inquiry Type
+              </label>
+              <select
+                value={inquiryTypeFilter}
+                onChange={(e) => setInquiryTypeFilter(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">All Inquiries</option>
+                <option value="single">Single Product</option>
+                <option value="bulk">Bulk RFQ (Multi-Product)</option>
+                <option value="get_quote">Get Best Quote</option>
+                <option value="call_back">Call Back Request</option>
+                <option value="customization">Custom Quote</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Start Date
               </label>
               <input
@@ -587,6 +769,7 @@ const Leads = () => {
           {
             label: 'Update Priority',
             variant: 'secondary',
+            icon: ArrowUpDown,
             onClick: () => {
               const priority = prompt('Enter priority (low, medium, high, urgent):');
               if (priority && ['low', 'medium', 'high', 'urgent'].includes(priority.toLowerCase())) {
@@ -601,7 +784,7 @@ const Leads = () => {
       <div className="bg-white rounded-lg shadow-md border border-gray-200">
         {loading ? (
           <Loader />
-        ) : leads.length === 0 ? (
+        ) : combinedLeads.length === 0 ? (
           <div className="p-12 text-center">
             <Briefcase className="mx-auto text-gray-400 mb-4" size={48} />
             <p className="text-gray-600">No leads found</p>
@@ -615,29 +798,74 @@ const Leads = () => {
           <>
             <Table
               columns={columns}
-              data={leads}
+              data={combinedLeads}
               enableBulkSelection={true}
               onSelectionChange={handleSelectionChange}
               getRowId={(row) => row._id}
               actions={(row) => (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleViewDetails(row)}
-                  icon={<Eye size={16} />}
-                >
-                  View
-                </Button>
+                <div className="flex items-center gap-1">
+                  {/* Contact Actions */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      window.open(`tel:${row.buyerPhone}`, '_self');
+                    }}
+                    title="Call"
+                    className="p-1.5"
+                  >
+                    <Phone size={14} className="text-green-600" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const phone = row.buyerPhone.replace(/[^0-9]/g, '');
+                      window.open(`https://wa.me/${phone}`, '_blank');
+                    }}
+                    title="WhatsApp"
+                    className="p-1.5"
+                  >
+                    <MessageCircle size={14} className="text-green-600" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      window.location.href = `mailto:${row.buyerEmail}`;
+                    }}
+                    title="Email"
+                    className="p-1.5"
+                  >
+                    <Mail size={14} className="text-blue-600" />
+                  </Button>
+                  {/* View Button */}
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleViewDetails(row);
+                    }}
+                    title="View Details"
+                  >
+                    <Eye size={14} />
+                    View
+                  </Button>
+                </div>
               )}
             />
-            {pagination.pages > 1 && (
+            {combinedPagination.pages > 1 && (
               <div className="p-4 border-t border-gray-200">
                 <Pagination
                   currentPage={currentPage}
-                  totalPages={pagination.pages}
+                  totalPages={combinedPagination.pages}
                   onPageChange={setCurrentPage}
                   itemsPerPage={itemsPerPage}
-                  totalItems={pagination.total}
+                  totalItems={combinedPagination.total}
                 />
               </div>
             )}
@@ -653,8 +881,41 @@ const Leads = () => {
           setSelectedLead(null);
         }}
         lead={selectedLead}
-        onUpdate={() => {
-          dispatch(fetchLeads({ page: currentPage, limit: itemsPerPage }));
+        onUpdate={async () => {
+          // Refresh both leads and bulk RFQs
+          const params = {};
+          if (statusFilter) params.status = statusFilter;
+          if (priorityFilter) params.priority = priorityFilter;
+          if (businessTypeFilter) params.businessType = businessTypeFilter;
+          if (dateRangeFilter.start) params.startDate = dateRangeFilter.start;
+          if (dateRangeFilter.end) params.endDate = dateRangeFilter.end;
+          if (searchQuery) params.search = searchQuery;
+          params.page = currentPage;
+          params.limit = itemsPerPage;
+          
+          dispatch(fetchLeads(params));
+          
+          // Refresh bulk RFQs if needed
+          if (inquiryTypeFilter !== 'single') {
+            try {
+              const bulkParams = { page: currentPage, limit: itemsPerPage };
+              if (statusFilter) bulkParams.status = statusFilter;
+              if (searchQuery) bulkParams.q = searchQuery;
+              const response = await bulkRfqService.getAll(bulkParams);
+              const rfqData = Array.isArray(response.data) ? response.data : [];
+              const transformedRFQs = rfqData.map(rfq => ({
+                ...rfq,
+                _isBulkRFQ: true,
+                status: rfq.status === 'in_progress' ? 'contacted' : 
+                        rfq.status === 'won' ? 'closed' : 
+                        rfq.status === 'lost' ? 'lost' : rfq.status,
+              }));
+              setBulkRFQs(transformedRFQs);
+            } catch (error) {
+              console.error('Error refreshing bulk RFQs:', error);
+            }
+          }
+          
           dispatch(fetchLeadStats());
         }}
       />
@@ -663,4 +924,3 @@ const Leads = () => {
 };
 
 export default Leads;
-

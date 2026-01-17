@@ -23,6 +23,29 @@ const bannerSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+
+    placement: {
+      type: String,
+      trim: true,
+      default: 'global',
+      index: true,
+    },
+    // Banner type: 'b2c', 'b2b', or 'both' (available for both B2C and B2B)
+    bannerType: {
+      type: String,
+      enum: ['b2c', 'b2b', 'both'],
+      default: 'b2c', // Default to B2C for backward compatibility
+    },
+    startAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+    endAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
     priority: {
       type: Number,
       default: 0,

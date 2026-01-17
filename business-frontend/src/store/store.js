@@ -7,6 +7,7 @@ import quotesReducer from './slices/quotesSlice';
 import messagesReducer from './slices/messagesSlice';
 import dashboardReducer from './slices/dashboardSlice';
 import analyticsReducer from './slices/analyticsSlice';
+import settingsReducer from './slices/settingsSlice';
 
 export const store = configureStore({
   reducer: {
@@ -18,6 +19,7 @@ export const store = configureStore({
     messages: messagesReducer,
     dashboard: dashboardReducer,
     analytics: analyticsReducer,
+    settings: settingsReducer,
   },
 });
 

@@ -27,7 +27,30 @@ exports.getAllProducts = async (req, res, next) => {
       color,
       rating,
       discount,
+      sort,
     } = req.query;
+
+    const resolveSort = (value) => {
+      switch ((value || '').toString()) {
+        case 'newest':
+          return { createdAt: -1 };
+        case 'oldest':
+          return { createdAt: 1 };
+        case 'price_low':
+          return { price: 1, createdAt: -1 };
+        case 'price_high':
+          return { price: -1, createdAt: -1 };
+        case 'name_asc':
+          return { name: 1 };
+        case 'name_desc':
+          return { name: -1 };
+        default:
+          // "relevance" (or missing) falls back to newest for consistency
+          return { createdAt: -1 };
+      }
+    };
+
+    const sortSpec = resolveSort(sort);
 
     // Build query
     let query = {};
@@ -246,7 +269,7 @@ exports.getAllProducts = async (req, res, next) => {
           _id: { $in: validProductIds }
         })
           .populate('category', 'name description')
-          .sort({ createdAt: -1 })
+          .sort(sortSpec)
           .skip(skip)
           .limit(limitNum)
           .lean();
@@ -263,7 +286,7 @@ exports.getAllProducts = async (req, res, next) => {
         // Get paginated products
         products = await Product.find(query)
           .populate('category', 'name description')
-          .sort({ createdAt: -1 })
+          .sort(sortSpec)
           .skip(skip)
           .limit(limitNum)
           .lean();

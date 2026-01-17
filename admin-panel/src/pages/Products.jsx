@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useLocation } from 'react-router-dom';
 import { fetchProducts, deleteProduct, updateProduct, createProduct } from '../store/slices/productSlice';
 import { fetchCategories } from '../store/slices/categorySlice';
 import Table from '../components/Table';
@@ -19,6 +20,10 @@ import EmptyState from '../components/EmptyState';
 import BulkImport from '../components/BulkImport';
 
 const Products = () => {
+  const location = useLocation();
+  // Determine if we're in B2B or B2C section
+  const isB2BSection = location.pathname.startsWith('/b2b/products');
+  const isB2CSection = location.pathname.startsWith('/b2c/products');
   const dispatch = useDispatch();
   const { products, loading, error } = useSelector((state) => state.products);
   const { categories } = useSelector((state) => state.categories || { categories: [] });
@@ -39,12 +44,16 @@ const Products = () => {
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   const [showBulkImport, setShowBulkImport] = useState(false);
 
+  // Determine section for API calls
+  const section = isB2BSection ? 'b2b' : isB2CSection ? 'b2c' : null;
+
   useEffect(() => {
-    dispatch(fetchProducts());
-    dispatch(fetchCategories());
-  }, [dispatch]);
+    dispatch(fetchProducts({ params: {}, section }));
+    dispatch(fetchCategories(section));
+  }, [dispatch, section]);
 
   // Filter and paginate products
+  // No need to filter by productType anymore since we're using separate endpoints
   const filteredProducts = useMemo(() => {
     let filtered = [...products];
 
@@ -133,12 +142,14 @@ const Products = () => {
 
   const handleDelete = useCallback(async (id) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
-      const result = await dispatch(deleteProduct(id));
+      const result = await dispatch(deleteProduct({ id, section }));
       if (result.type === 'products/delete/fulfilled') {
         toast.success('Product deleted successfully');
+        // Refetch products to ensure we have the latest data
+        dispatch(fetchProducts({ params: {}, section }));
       }
     }
-  }, [dispatch]);
+  }, [dispatch, section]);
 
   const handleCloseModal = useCallback(() => {
     setIsModalOpen(false);
@@ -167,7 +178,7 @@ const Products = () => {
 
       for (const product of selectedProducts) {
         try {
-          const result = await dispatch(deleteProduct(product._id));
+          const result = await dispatch(deleteProduct({ id: product._id, section }));
           if (result.type === 'products/delete/fulfilled') {
             successCount++;
           } else {
@@ -211,7 +222,8 @@ const Products = () => {
         try {
           const result = await dispatch(updateProduct({ 
             id: product._id, 
-            productData: updateData 
+            productData: updateData,
+            section
           }));
           if (result.type === 'products/update/fulfilled') {
             successCount++;
@@ -405,13 +417,13 @@ const Products = () => {
         featured: row.featured || row.Featured || false,
       }));
 
-      // Import products (you'll need to implement this in your API)
+      // Import products
       for (const product of processedProducts) {
-        await dispatch(createProduct(product));
+        await dispatch(createProduct({ productData: product, section }));
       }
 
       toast.success(`Successfully imported ${processedProducts.length} products`);
-      dispatch(fetchProducts());
+      dispatch(fetchProducts({ params: {}, section }));
     } catch (error) {
       throw new Error('Failed to import products: ' + error.message);
     }
@@ -675,6 +687,7 @@ const Products = () => {
         <ProductForm
           product={editingProduct}
           onClose={handleCloseModal}
+          section={section}
         />
       )}
 

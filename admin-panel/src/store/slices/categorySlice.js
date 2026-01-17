@@ -10,12 +10,22 @@ const initialState = {
 
 export const fetchCategories = createAsyncThunk(
   'categories/fetchAll',
-  async (_, { rejectWithValue }) => {
+  async (section = null, { rejectWithValue }) => {
     try {
-      const response = await categoryService.getAllCategories();
-      // Handle both response structures: { success: true, data: [...] } or direct array
-      return response.data?.data || response.data || response;
+      const response = await categoryService.getAllCategories(section);
+      console.log('📦 Categories received in thunk:', response);
+      // Service returns { success: true, data: [...] }
+      if (response && response.success && Array.isArray(response.data)) {
+        return response.data;
+      }
+      // Fallback: if data is directly an array
+      if (Array.isArray(response)) {
+        return response;
+      }
+      // If structure is different, return data property or empty array
+      return response?.data || response || [];
     } catch (error) {
+      console.error('❌ Error fetching categories:', error);
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch categories');
     }
   }
@@ -23,10 +33,10 @@ export const fetchCategories = createAsyncThunk(
 
 export const createCategory = createAsyncThunk(
   'categories/create',
-  async (categoryData, { rejectWithValue }) => {
+  async ({ categoryData, section = null }, { rejectWithValue }) => {
     try {
-      const response = await categoryService.createCategory(categoryData);
-      return response.data;
+      const response = await categoryService.createCategory(categoryData, section);
+      return response.data || response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to create category');
     }
@@ -35,10 +45,10 @@ export const createCategory = createAsyncThunk(
 
 export const updateCategory = createAsyncThunk(
   'categories/update',
-  async ({ id, categoryData }, { rejectWithValue }) => {
+  async ({ id, categoryData, section = null }, { rejectWithValue }) => {
     try {
-      const response = await categoryService.updateCategory(id, categoryData);
-      return response.data;
+      const response = await categoryService.updateCategory(id, categoryData, section);
+      return response.data || response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to update category');
     }
@@ -47,9 +57,9 @@ export const updateCategory = createAsyncThunk(
 
 export const deleteCategory = createAsyncThunk(
   'categories/delete',
-  async (id, { rejectWithValue }) => {
+  async ({ id, section = null }, { rejectWithValue }) => {
     try {
-      await categoryService.deleteCategory(id);
+      await categoryService.deleteCategory(id, section);
       return id;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to delete category');
@@ -77,7 +87,8 @@ const categorySlice = createSlice({
       })
       .addCase(fetchCategories.fulfilled, (state, action) => {
         state.loading = false;
-        state.categories = action.payload;
+        console.log('✅ Categories fetched successfully, count:', action.payload?.length || 0);
+        state.categories = Array.isArray(action.payload) ? action.payload : [];
       })
       .addCase(fetchCategories.rejected, (state, action) => {
         state.loading = false;
@@ -89,7 +100,11 @@ const categorySlice = createSlice({
       })
       .addCase(createCategory.fulfilled, (state, action) => {
         state.loading = false;
-        state.categories.unshift(action.payload);
+        // Backend returns { success: true, data: category }
+        const newCategory = action.payload?.data || action.payload;
+        if (newCategory) {
+          state.categories.unshift(newCategory);
+        }
       })
       .addCase(createCategory.rejected, (state, action) => {
         state.loading = false;
@@ -101,9 +116,13 @@ const categorySlice = createSlice({
       })
       .addCase(updateCategory.fulfilled, (state, action) => {
         state.loading = false;
-        const index = state.categories.findIndex((c) => c._id === action.payload._id);
-        if (index !== -1) {
-          state.categories[index] = action.payload;
+        // Backend returns { success: true, data: category }
+        const updatedCategory = action.payload?.data || action.payload;
+        if (updatedCategory) {
+          const index = state.categories.findIndex((c) => c._id === updatedCategory._id);
+          if (index !== -1) {
+            state.categories[index] = updatedCategory;
+          }
         }
       })
       .addCase(updateCategory.rejected, (state, action) => {

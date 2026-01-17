@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { FiUser, FiMenu, FiX, FiLogOut, FiPackage, FiHome, FiCreditCard, FiMessageCircle, FiFileText, FiBarChart2, FiBriefcase } from 'react-icons/fi';
+import { FiUser, FiMenu, FiX, FiLogOut, FiPackage, FiHome, FiCreditCard, FiMessageCircle, FiFileText, FiBarChart2, FiBriefcase, FiShoppingBag } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { logout } from '../store/slices/authSlice';
+import { useRfq } from '../contexts/RfqContext';
 
 const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -11,6 +12,7 @@ const Header = () => {
   const { account } = useSelector((state) => state.businessAccount);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { openDrawer, rfqCount } = useRfq();
 
   const handleLogout = () => {
     dispatch(logout());
@@ -54,6 +56,20 @@ const Header = () => {
 
           {/* Right Icons */}
           <div className="flex items-center space-x-4">
+            {/* RFQ Button - Always visible */}
+            <button
+              onClick={openDrawer}
+              className="relative flex items-center space-x-1 text-text hover:text-primary transition-colors p-2 rounded-lg hover:bg-gray-50"
+              title="RFQ List"
+            >
+              <FiShoppingBag size={20} />
+              {rfqCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-primary text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  {rfqCount > 9 ? '9+' : rfqCount}
+                </span>
+              )}
+            </button>
+
             {isAuthenticated ? (
               <div className="hidden md:flex items-center space-x-4">
                 {/* Dashboard Link - Only show if has business account */}
@@ -181,6 +197,17 @@ const Header = () => {
                   {link.name}
                 </Link>
               ))}
+              {/* RFQ Button in Mobile Menu */}
+              <button
+                onClick={() => {
+                  openDrawer();
+                  setIsMobileMenuOpen(false);
+                }}
+                className="text-left text-text hover:text-primary transition-colors flex items-center gap-2"
+              >
+                <FiShoppingBag size={18} />
+                RFQ List {rfqCount > 0 && `(${rfqCount})`}
+              </button>
               {isAuthenticated ? (
                 <>
                   {account && account.status === 'active' && (

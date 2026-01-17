@@ -4,9 +4,12 @@ import { FiX, FiPhone, FiCheckCircle } from 'react-icons/fi';
 import { leadService } from '../services/leadService';
 import { useSelector } from 'react-redux';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 
 const QuickInquiryForm = ({ isOpen, onClose, product, onSuccess }) => {
   const { user, isAuthenticated } = useSelector((state) => state.auth);
+  const { data: settings } = useSelector((state) => state.settings);
+  const navigate = useNavigate();
   const [mobileNumber, setMobileNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -14,6 +17,13 @@ const QuickInquiryForm = ({ isOpen, onClose, product, onSuccess }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const requireLoginForInquiry = Boolean(settings?.b2b?.requireLoginForInquiry);
+    if (requireLoginForInquiry && !isAuthenticated) {
+      toast.error('Please login to send an inquiry');
+      navigate('/login', { state: { from: window.location.pathname } });
+      return;
+    }
     
     if (!mobileNumber || mobileNumber.length < 10) {
       toast.error('Please enter a valid mobile number');
@@ -60,7 +70,33 @@ const QuickInquiryForm = ({ isOpen, onClose, product, onSuccess }) => {
       }, 2000);
     } catch (error) {
       console.error('Error submitting inquiry:', error);
-      toast.error(error.response?.data?.message || 'Failed to submit inquiry. Please try again.');
+      console.error('Error details:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        message: error.response?.data?.message,
+        data: error.response?.data,
+      });
+      
+      // Handle specific error cases
+      if (error.response?.status === 401) {
+        const errorMessage = error.response?.data?.message || 'Please login to submit an inquiry';
+        toast.error(errorMessage);
+        
+        // If explicitly requires auth, redirect to login after a delay
+        if (error.response?.data?.requiresAuth) {
+          setTimeout(() => {
+            navigate('/login', { state: { from: window.location.pathname } });
+          }, 2500);
+        }
+      } else if (error.response?.status === 400) {
+        toast.error(error.response?.data?.message || 'Please check your form data and try again.');
+      } else if (error.response?.status === 404) {
+        toast.error(error.response?.data?.message || 'Product not found. Please try again.');
+      } else if (error.response?.status >= 500) {
+        toast.error('Server error. Please try again later.');
+      } else {
+        toast.error(error.response?.data?.message || 'Failed to submit inquiry. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -80,8 +116,8 @@ const QuickInquiryForm = ({ isOpen, onClose, product, onSuccess }) => {
           {/* Header */}
           <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-6 rounded-t-2xl flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-heading font-bold">Login to get best deals instantly</h2>
-              <p className="text-sm text-white/90 mt-1">Just One Step to Connect with Verified Seller</p>
+              <h2 className="text-2xl font-heading font-bold">Quick Inquiry</h2>
+              <p className="text-sm text-white/90 mt-1">Share your mobile number to connect with seller</p>
             </div>
             <button
               onClick={onClose}

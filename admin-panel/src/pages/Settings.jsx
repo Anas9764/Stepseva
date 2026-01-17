@@ -21,6 +21,11 @@ const schema = yup.object().shape({
   homepageTitle: yup.string(),
   homepageSubtitle: yup.string(),
   footerText: yup.string(),
+  b2b: yup
+    .object({
+      requireLoginForInquiry: yup.boolean(),
+    })
+    .default(undefined),
 });
 
 const Settings = () => {
@@ -249,6 +254,26 @@ const Settings = () => {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lavender-500 focus:border-transparent"
                 placeholder="© 2024 StepSeva. All rights reserved."
               />
+            </div>
+          </div>
+        </div>
+
+        {/* B2B Settings */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">B2B Settings</h2>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <input
+                {...register('b2b.requireLoginForInquiry')}
+                type="checkbox"
+                className="w-4 h-4 text-lavender-600 border-gray-300 rounded focus:ring-lavender-500"
+              />
+              <div>
+                <p className="text-sm font-medium text-gray-800">Require login for inquiries</p>
+                <p className="text-xs text-gray-500">
+                  When enabled, buyers must login before submitting an inquiry or requesting a quote.
+                </p>
+              </div>
             </div>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -25,6 +26,10 @@ const schema = yup.object().shape({
 });
 
 const Categories = () => {
+  const location = useLocation();
+  // Determine if we're in B2B or B2C section
+  const isB2BSection = location.pathname.startsWith('/b2b/categories');
+  const isB2CSection = location.pathname.startsWith('/b2c/categories');
   const dispatch = useDispatch();
   const { categories, loading } = useSelector((state) => state.categories);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -44,9 +49,12 @@ const Categories = () => {
     resolver: yupResolver(schema),
   });
 
+  // Determine section for API calls
+  const section = isB2BSection ? 'b2b' : isB2CSection ? 'b2c' : null;
+
   useEffect(() => {
-    dispatch(fetchCategories());
-  }, [dispatch]);
+    dispatch(fetchCategories(section));
+  }, [dispatch, section]);
 
   const handleEdit = (category) => {
     setEditingCategory(category);
@@ -60,7 +68,7 @@ const Categories = () => {
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this category?')) {
-      const result = await dispatch(deleteCategory(id));
+      const result = await dispatch(deleteCategory({ id, section }));
       if (result.type === 'categories/delete/fulfilled') {
         toast.success('Category deleted successfully');
       }
@@ -123,17 +131,19 @@ const Categories = () => {
       }
 
       const categoryData = {
-        ...data,
+        name: data.name,
+        description: data.description || '',
         image: imageUrl,
+        // No categoryType needed - determined by endpoint (/b2b/categories or /b2c/categories)
       };
 
       let result;
       if (editingCategory) {
         result = await dispatch(
-          updateCategory({ id: editingCategory._id, categoryData })
+          updateCategory({ id: editingCategory._id, categoryData, section })
         );
       } else {
-        result = await dispatch(createCategory(categoryData));
+        result = await dispatch(createCategory({ categoryData, section }));
       }
 
       if (result.type.includes('fulfilled')) {
@@ -142,6 +152,8 @@ const Categories = () => {
             ? 'Category updated successfully'
             : 'Category created successfully'
         );
+        // Refetch categories to ensure we have the latest data
+        dispatch(fetchCategories(section));
         handleCloseModal();
       } else if (result.type.includes('rejected')) {
         const errorMessage = result.payload || 'Failed to save category';
@@ -154,15 +166,19 @@ const Categories = () => {
   };
 
   // Filter and paginate categories
+  // No need to filter by categoryType anymore since we're using separate endpoints
   const filteredCategories = useMemo(() => {
+    let filtered = [...categories];
+
+    // Search filter
     if (searchQuery) {
-      return categories.filter(
+      filtered = filtered.filter(
         (cat) =>
           cat.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
           cat.description?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
-    return categories;
+    return filtered;
   }, [searchQuery, categories]);
 
   const totalPages = Math.ceil(filteredCategories.length / itemsPerPage);
@@ -227,7 +243,13 @@ const Categories = () => {
             Manage product categories • {filteredCategories.length} {filteredCategories.length === 1 ? 'category' : 'categories'} found
           </p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)} icon={<Plus size={20} />}>
+        <Button 
+          onClick={() => {
+            reset();
+            setIsModalOpen(true);
+          }} 
+          icon={<Plus size={20} />}
+        >
           Add Category
         </Button>
       </div>
@@ -354,6 +376,7 @@ const Categories = () => {
               placeholder="Enter category description"
             />
           </div>
+
 
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">

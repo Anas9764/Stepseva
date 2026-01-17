@@ -41,10 +41,11 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className={`relative bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full ${sizeClasses[size]}`}
+              className={`relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full flex flex-col ${sizeClasses[size]}`}
+              style={{ maxHeight: '90vh' }}
             >
-              {/* Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              {/* Header - Fixed */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h3>
                 <button
                   onClick={onClose}
@@ -55,8 +56,8 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
                 </button>
               </div>
 
-              {/* Content */}
-              <div className="px-6 py-4 max-h-[calc(100vh-200px)] overflow-y-auto">
+              {/* Content - Scrollable */}
+              <div className="flex-1 overflow-y-auto min-h-0">
                 {children}
               </div>
             </motion.div>

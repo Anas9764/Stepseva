@@ -6,13 +6,51 @@ const Product = require('../models/Product');
 // @access  Public
 exports.getAllCategories = async (req, res, next) => {
   try {
-    const categories = await Category.find().sort({ createdAt: -1 }).lean();
+    const categoryType = req.query.categoryType; // Optional: b2b, b2c, both
+    const allCategories = req.query.all === 'true'; // Admin can request all categories
+    
+    // Build query
+    let query = {};
+    
+    // If admin requests all categories, skip filtering
+    if (allCategories || (req.user && req.user.role === 'admin')) {
+      // Admin sees all categories - no filtering
+      query = {};
+    } else if (categoryType) {
+      // Filter by categoryType if specified
+      if (categoryType === 'b2b') {
+        // Only show B2B and 'both' categories - no backward compatibility
+        query.$or = [
+          { categoryType: 'b2b' },
+          { categoryType: 'both' },
+        ];
+      } else if (categoryType === 'b2c') {
+        // Only show B2C and 'both' categories - no backward compatibility
+        query.$or = [
+          { categoryType: 'b2c' },
+          { categoryType: 'both' },
+        ];
+      } else {
+        query.categoryType = categoryType;
+      }
+    } else {
+      // Default: For business frontend (B2B), show only B2B and both categories
+      query.$or = [
+        { categoryType: 'b2b' },
+        { categoryType: 'both' },
+      ];
+    }
 
-    // Add product count for each category
+    const categories = await Category.find(query).sort({ createdAt: -1 }).lean();
+
+    // Add product count for each category (only count active products)
     const categoriesWithCount = await Promise.all(
       categories.map(async (category) => {
         try {
-          const productCount = await Product.countDocuments({ category: category._id });
+          const productCount = await Product.countDocuments({ 
+            category: category._id,
+            isActive: true,
+          });
           return {
             ...category,
             productCount,
@@ -67,7 +105,7 @@ exports.getCategoryById = async (req, res, next) => {
 // @access  Private/Admin
 exports.createCategory = async (req, res, next) => {
   try {
-    const { name, description, image } = req.body;
+    const { name, description, image, categoryType } = req.body;
 
     // Check if category already exists
     const categoryExists = await Category.findOne({ name });
@@ -82,6 +120,7 @@ exports.createCategory = async (req, res, next) => {
       name,
       description,
       image: image || '',
+      categoryType: categoryType || 'b2c', // Default to 'b2c' if not specified
     });
 
     res.status(201).json({
@@ -121,9 +160,16 @@ exports.updateCategory = async (req, res, next) => {
       }
     }
 
+    // Build update object
+    const updateData = {};
+    if (name) updateData.name = name;
+    if (description !== undefined) updateData.description = description;
+    if (image !== undefined) updateData.image = image;
+    if (req.body.categoryType !== undefined) updateData.categoryType = req.body.categoryType;
+
     category = await Category.findByIdAndUpdate(
       req.params.id,
-      { name, description, image },
+      updateData,
       { new: true, runValidators: true }
     );
 

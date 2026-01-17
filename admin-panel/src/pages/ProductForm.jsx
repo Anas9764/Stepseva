@@ -24,7 +24,7 @@ const schema = yup.object().shape({
   featured: yup.boolean(),
 });
 
-const ProductForm = ({ product, onClose }) => {
+const ProductForm = ({ product, onClose, section = null }) => {
   const dispatch = useDispatch();
   const { categories } = useSelector((state) => state.categories);
   const { loading } = useSelector((state) => state.products);
@@ -96,7 +96,13 @@ const ProductForm = ({ product, onClose }) => {
     // Fetch parent products for variant dropdown
     const fetchParentProducts = async () => {
       try {
-        const response = await fetch(`${getApiUrl()}/products?limit=1000`);
+        // Use section-specific endpoint
+        const endpoint = section === 'b2b' ? '/b2b/products' : section === 'b2c' ? '/b2c/products' : '/products';
+        const response = await fetch(`${getApiUrl()}${endpoint}?limit=1000`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('adminToken')}`,
+          },
+        });
         const data = await response.json();
         if (data.success) {
           // Filter out variants and current product
@@ -110,7 +116,7 @@ const ProductForm = ({ product, onClose }) => {
       }
     };
     fetchParentProducts();
-  }, [product]);
+  }, [product, section]);
 
   useEffect(() => {
     if (product) {
@@ -261,9 +267,9 @@ const ProductForm = ({ product, onClose }) => {
 
       let result;
       if (product) {
-        result = await dispatch(updateProduct({ id: product._id, productData }));
+        result = await dispatch(updateProduct({ id: product._id, productData, section }));
       } else {
-        result = await dispatch(createProduct(productData));
+        result = await dispatch(createProduct({ productData, section }));
       }
 
       if (result.type.includes('fulfilled')) {

@@ -52,6 +52,13 @@ const settingsSchema = new mongoose.Schema(
     footerText: {
       type: String,
     },
+
+    b2b: {
+      requireLoginForInquiry: {
+        type: Boolean,
+        default: false,
+      },
+    },
   },
   {
     timestamps: true,

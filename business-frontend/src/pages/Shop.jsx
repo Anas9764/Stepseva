@@ -1,10 +1,12 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiSearch, FiFilter, FiX, FiChevronDown } from 'react-icons/fi';
+import { FiSearch, FiFilter, FiX, FiChevronDown, FiGrid, FiSliders, FiCheckSquare, FiSquare, FiSend } from 'react-icons/fi';
 import { productService } from '../services/productService';
 import { categoryService } from '../services/categoryService';
 import ProductCard from '../components/ProductCard';
+import ProductListItem from '../components/ProductListItem';
+import BulkInquiryModal from '../components/BulkInquiryModal';
 import { SkeletonCard } from '../components/Loader';
 import Pagination from '../components/Pagination';
 import { useDebounce } from '../hooks/useDebounce';
@@ -33,6 +35,12 @@ const Shop = () => {
     search: '',
   });
   const [showFilters, setShowFilters] = useState(false);
+  const [sortBy, setSortBy] = useState(searchParams.get('sort') || 'relevance');
+  const [view, setView] = useState(searchParams.get('view') || 'grid');
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [selectedProductsMap, setSelectedProductsMap] = useState(() => new Map()); // Store full product objects
+  const [showBulkInquiry, setShowBulkInquiry] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
     category: true,
     size: true,
@@ -48,21 +56,29 @@ const Shop = () => {
   const debouncedSearch = useDebounce(filters.search, 500);
 
   useEffect(() => {
+    // API-level deduplication handles duplicate calls, so we can call directly
     fetchCategories();
     // Fetch initial sizes and colors (without filters)
     fetchInitialFilters();
-  }, []);
+  }, [fetchCategories, fetchInitialFilters]);
 
   // Fetch products when filters or page changes (with debounced search)
   useEffect(() => {
     fetchProducts();
-  }, [debouncedSearch, filters.category, filters.gender, filters.footwearType, filters.size, filters.color, filters.rating, filters.discount, filters.minPrice, filters.maxPrice, currentPage]);
+  }, [debouncedSearch, filters.category, filters.gender, filters.footwearType, filters.size, filters.color, filters.rating, filters.discount, filters.minPrice, filters.maxPrice, currentPage, sortBy]);
 
-  const fetchCategories = async () => {
+  useEffect(() => {
+    const v = searchParams.get('view');
+    if (v && v !== view) setView(v);
+    const s = searchParams.get('sort');
+    if (s && s !== sortBy) setSortBy(s);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  const fetchCategories = useCallback(async () => {
     try {
-      const response = await categoryService.getAllCategories();
-      // Handle both response structures: response.data.data or response.data
-      const dbCategories = response?.data?.data || response?.data || response || [];
+      const dbCategories = await categoryService.getAllCategories();
+      console.log('📦 Shop Categories extracted:', dbCategories);
       const categoryNames = ['All', ...(Array.isArray(dbCategories) ? dbCategories.map((cat) => cat.name || cat) : [])];
       setCategories(categoryNames.length > 1 ? categoryNames : ['All', 'Ladies Footwear', 'Gents Footwear', 'Kids Footwear', 'Sneakers', 'Casual Shoes', 'Formal Shoes', 'Sports Shoes', 'Sandals', 'Boots']);
     } catch (error) {
@@ -70,10 +86,10 @@ const Shop = () => {
       // Fallback to default categories
       setCategories(['All', 'Ladies Footwear', 'Gents Footwear', 'Kids Footwear', 'Sneakers', 'Casual Shoes', 'Formal Shoes', 'Sports Shoes', 'Sandals', 'Boots']);
     }
-  };
+  }, []);
 
   // Fetch initial filters (sizes and colors) without pagination
-  const fetchInitialFilters = async () => {
+  const fetchInitialFilters = useCallback(async () => {
     try {
       const response = await productService.getAllProducts({ limit: 1000 });
       const productsData = response?.data?.data || response?.data || [];
@@ -94,7 +110,7 @@ const Shop = () => {
     } catch (error) {
       console.error('Error fetching initial filters:', error);
     }
-  };
+  }, []);
 
   const fetchProducts = useCallback(async () => {
     try {
@@ -111,6 +127,7 @@ const Shop = () => {
         ...(filters.discount && filters.discount !== 'All' && { discount: filters.discount }),
         minPrice: filters.minPrice,
         maxPrice: filters.maxPrice,
+        ...(sortBy && sortBy !== 'relevance' && { sort: sortBy }),
         page: currentPage,
         limit: itemsPerPage,
       };
@@ -140,6 +157,8 @@ const Shop = () => {
       const newParams = new URLSearchParams();
       if (filters.category && filters.category !== 'All') newParams.set('category', filters.category);
       if (currentPage > 1) newParams.set('page', currentPage.toString());
+      if (sortBy && sortBy !== 'relevance') newParams.set('sort', sortBy);
+      if (view && view !== 'grid') newParams.set('view', view);
       setSearchParams(newParams);
     } catch (error) {
       console.error('Error fetching products:', error);
@@ -149,7 +168,73 @@ const Shop = () => {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, filters, currentPage, itemsPerPage, setSearchParams]);
+  }, [debouncedSearch, filters, currentPage, itemsPerPage, setSearchParams, sortBy, view]);
+
+  const removeFilter = (key) => {
+    setFilters((prev) => ({ ...prev, [key]: '' }));
+    setCurrentPage(1);
+  };
+
+  const activeChips = useMemo(() => {
+    const chips = [];
+    if (filters.category) chips.push({ key: 'category', label: filters.category });
+    if (filters.gender) chips.push({ key: 'gender', label: filters.gender });
+    if (filters.footwearType) chips.push({ key: 'footwearType', label: filters.footwearType });
+    if (filters.size) chips.push({ key: 'size', label: `Size ${filters.size}` });
+    if (filters.color) chips.push({ key: 'color', label: `${filters.color}` });
+    if (filters.rating) chips.push({ key: 'rating', label: `${filters.rating} rating` });
+    if (filters.discount) chips.push({ key: 'discount', label: `${filters.discount} off` });
+
+    if (filters.minPrice > 0 || filters.maxPrice < 10000) {
+      chips.push({
+        key: 'price',
+        label: `₹${filters.minPrice.toLocaleString()} - ₹${filters.maxPrice.toLocaleString()}`,
+      });
+    }
+    return chips;
+  }, [filters]);
+
+  const selectedProducts = useMemo(() => {
+    if (selectedProductsMap.size === 0) return [];
+    return Array.from(selectedProductsMap.values());
+  }, [selectedProductsMap]);
+
+  const toggleSelectId = (product) => {
+    const productId = product._id;
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(productId)) {
+        next.delete(productId);
+      } else {
+        next.add(productId);
+      }
+      return next;
+    });
+    
+    // Store/remove full product object
+    setSelectedProductsMap((prev) => {
+      const next = new Map(prev);
+      if (next.has(productId)) {
+        next.delete(productId);
+      } else {
+        // Store minimal product data needed for RFQ
+        next.set(productId, {
+          _id: product._id,
+          name: product.name,
+          moq: product.moq || 1,
+          price: product.price,
+          image: product.images?.[0] || product.image,
+        });
+      }
+      return next;
+    });
+  };
+
+  const clearSelection = () => {
+    setSelectedIds(new Set());
+    setSelectedProductsMap(new Map());
+    setSelectionMode(false);
+  };
 
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({
@@ -163,6 +248,16 @@ const Shop = () => {
     if (key === 'category') {
       setSearchParams(value && value !== 'All' ? { category: value } : {});
     }
+  };
+
+  const updateParam = (key, value) => {
+    const next = new URLSearchParams(searchParams);
+    if (value === undefined || value === null || value === '' || value === false) {
+      next.delete(key);
+    } else {
+      next.set(key, String(value));
+    }
+    setSearchParams(next);
   };
 
   const handleSearch = (e) => {
@@ -258,23 +353,50 @@ const Shop = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-heading font-bold text-secondary mb-4 bg-gradient-to-r from-secondary to-primary bg-clip-text text-transparent">
-              B2B Product Marketplace
-            </h1>
-            <p className="text-lg text-gray-600 max-w-2xl">
-              Browse our wholesale footwear collection. Click "Get Best Price" to submit an inquiry and connect directly with our team for bulk orders, custom pricing, and flexible MOQ options.
-            </p>
+            <div className="inline-flex items-center gap-2 text-xs sm:text-sm text-gray-500 mb-3">
+              <span className="font-medium">Home</span>
+              <span className="text-gray-300">/</span>
+              <span className="text-primary font-semibold">Shop</span>
+            </div>
+
+            <div className="bg-white/80 backdrop-blur-md border border-gray-100 rounded-3xl p-6 sm:p-8 shadow-sm">
+              <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
+                <div>
+                  <h1 className="text-4xl md:text-5xl lg:text-6xl font-heading font-bold text-secondary mb-3 bg-gradient-to-r from-secondary to-primary bg-clip-text text-transparent">
+                    B2B Product Marketplace
+                  </h1>
+                  <p className="text-base sm:text-lg text-gray-600 max-w-2xl">
+                    Browse our wholesale footwear collection. Click "Get Best Price" to submit an inquiry and connect directly with our team for bulk orders, custom pricing, and flexible MOQ options.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {!loading && (
+                    <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/10 border border-primary/15 text-primary text-sm font-semibold">
+                      <FiGrid />
+                      <span>{totalProducts} items</span>
+                    </div>
+                  )}
+                  {activeFiltersCount > 0 && (
+                    <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 border border-gray-100 text-gray-700 text-sm font-semibold">
+                      <FiSliders />
+                      <span>{activeFiltersCount} {activeFiltersCount === 1 ? 'filter' : 'filters'}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </motion.div>
         </div>
 
       {/* Search Bar */}
-      <div className="mb-8">
+      <div className="mb-6">
         <motion.form
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
           onSubmit={handleSearch}
-          className="flex flex-col sm:flex-row gap-4"
+          className="flex flex-col sm:flex-row gap-3"
         >
           <div className="flex-1 relative">
             <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
@@ -283,19 +405,19 @@ const Shop = () => {
               value={filters.search}
               onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
               placeholder="Search for shoes, sneakers, sandals..."
-              className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent shadow-sm hover:shadow-md transition-all"
+              className="w-full pl-12 pr-4 py-3.5 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40 shadow-sm hover:shadow-md transition-all"
             />
           </div>
           <button
             type="submit"
-            className="bg-gradient-to-r from-primary to-secondary text-white px-8 py-4 rounded-xl hover:shadow-lg transition-all duration-300 font-semibold transform hover:scale-105"
+            className="bg-gradient-to-r from-primary to-secondary text-white px-7 py-3.5 rounded-2xl hover:shadow-lg transition-all duration-300 font-semibold"
           >
             Search
           </button>
           <button
             type="button"
             onClick={() => setShowFilters(!showFilters)}
-            className="lg:hidden relative bg-white border-2 border-primary text-primary px-4 sm:px-6 py-3 sm:py-4 rounded-xl hover:bg-primary hover:text-white transition-all font-semibold flex items-center justify-center gap-2 text-sm sm:text-base shadow-sm hover:shadow-md"
+            className="lg:hidden relative bg-white border border-primary/50 text-primary px-4 sm:px-5 py-3.5 rounded-2xl hover:bg-primary hover:text-white transition-all font-semibold flex items-center justify-center gap-2 text-sm sm:text-base shadow-sm hover:shadow-md"
           >
             <FiFilter size={18} />
             <span>Filters</span>
@@ -841,42 +963,128 @@ const Shop = () => {
 
         {/* Products Grid */}
         <div className="flex-1 min-w-0">
-          <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-            <p className="text-sm sm:text-base text-gray-600 font-medium">
-              {loading ? (
-                <span className="flex items-center gap-2">
-                  <span className="animate-spin">⏳</span> Loading...
-                </span>
-              ) : (
-                <span className="text-secondary font-semibold">
-                  {totalProducts} {totalProducts === 1 ? 'product' : 'products'} found
-                </span>
-              )}
-            </p>
-            {/* Active Filters Display */}
-            {activeFiltersCount > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {filters.category && (
-                  <span className="px-3 py-1 bg-primary/10 text-primary text-xs font-semibold rounded-full border border-primary/20">
-                    {filters.category}
-                  </span>
-                )}
-                {filters.gender && (
-                  <span className="px-3 py-1 bg-primary/10 text-primary text-xs font-semibold rounded-full border border-primary/20">
-                    {filters.gender}
-                  </span>
-                )}
-                {filters.footwearType && (
-                  <span className="px-3 py-1 bg-primary/10 text-primary text-xs font-semibold rounded-full border border-primary/20">
-                    {filters.footwearType}
-                  </span>
-                )}
+          <div className="mb-4 sm:mb-6 bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-5">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm sm:text-base text-gray-600 font-medium">
+                  {loading ? (
+                    <span className="flex items-center gap-2">
+                      <span className="animate-spin">⏳</span> Loading...
+                    </span>
+                  ) : (
+                    <span className="text-secondary font-semibold">
+                      {totalProducts} {totalProducts === 1 ? 'product' : 'products'} found
+                    </span>
+                  )}
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => setShowFilters(true)}
+                  className="lg:hidden inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 font-semibold text-sm hover:border-primary/40 hover:bg-primary/5"
+                >
+                  <FiFilter />
+                  Filters
+                </button>
               </div>
-            )}
+
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="inline-flex items-center gap-1 p-1 rounded-xl border border-gray-200 bg-white w-fit">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setView('grid');
+                      updateParam('view', '');
+                    }}
+                    className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                      view === 'grid' ? 'bg-primary text-white' : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    Grid
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setView('list');
+                      updateParam('view', 'list');
+                    }}
+                    className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                      view === 'list' ? 'bg-primary text-white' : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    List
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectionMode((v) => !v);
+                    setSelectedIds(new Set());
+                  }}
+                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-semibold transition-colors w-fit ${
+                    selectionMode
+                      ? 'border-primary bg-primary text-white'
+                      : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  {selectionMode ? <FiCheckSquare /> : <FiSquare />}
+                  Select
+                </button>
+
+                {activeFiltersCount > 0 && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {activeChips.map((chip) => (
+                      <button
+                        key={chip.key}
+                        type="button"
+                        onClick={() => {
+                          if (chip.key === 'price') {
+                            handleFilterChange('minPrice', 0);
+                            handleFilterChange('maxPrice', 10000);
+                          } else {
+                            removeFilter(chip.key);
+                          }
+                        }}
+                        className="group inline-flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary text-xs font-semibold rounded-full border border-primary/15 hover:border-primary/30"
+                        title="Remove filter"
+                      >
+                        <span className="capitalize">{chip.label}</span>
+                        <FiX className="opacity-60 group-hover:opacity-100" />
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={clearFilters}
+                      className="text-xs font-semibold text-gray-600 hover:text-secondary underline"
+                    >
+                      Clear all
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-gray-500">Sort</span>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => {
+                      setSortBy(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  >
+                    <option value="relevance">Relevance</option>
+                    <option value="newest">Newest</option>
+                    <option value="price_low">Price: Low to High</option>
+                    <option value="price_high">Price: High to Low</option>
+                  </select>
+                </div>
+              </div>
+            </div>
           </div>
 
           {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6">
+            <div className={view === 'list' ? 'space-y-4' : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6'}>
               {Array(8)
                 .fill(0)
                 .map((_, i) => (
@@ -885,22 +1093,72 @@ const Shop = () => {
             </div>
           ) : allProducts.length > 0 ? (
             <>
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6"
-              >
-                {allProducts.map((product, index) => (
-                  <motion.div
-                    key={product._id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                  >
-                    <ProductCard product={product} showActions={false} />
-                  </motion.div>
-                ))}
-              </motion.div>
+              {view === 'list' ? (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+                  {allProducts.map((product) => (
+                    <div key={product._id} className="relative">
+                      {selectionMode && (
+                        <button
+                          type="button"
+                          onClick={() => toggleSelectId(product)}
+                          className={`absolute z-20 top-3 left-3 inline-flex items-center justify-center w-9 h-9 rounded-xl border shadow-sm transition-colors ${
+                            selectedIds.has(product._id)
+                              ? 'bg-primary text-white border-primary'
+                              : 'bg-white text-gray-700 border-gray-200 hover:border-primary/40'
+                          }`}
+                          aria-label={selectedIds.has(product._id) ? 'Deselect product' : 'Select product'}
+                        >
+                          {selectedIds.has(product._id) ? <FiCheckSquare /> : <FiSquare />}
+                        </button>
+                      )}
+                      <div
+                        className={selectionMode ? 'cursor-pointer' : ''}
+                        onClick={() => {
+                          if (selectionMode) toggleSelectId(product);
+                        }}
+                      >
+                        <ProductListItem product={product} />
+                      </div>
+                    </div>
+                  ))}
+                </motion.div>
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6"
+                >
+                  {allProducts.map((product, index) => (
+                    <motion.div
+                      key={product._id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                      className="relative"
+                    >
+                      {selectionMode && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            toggleSelectId(product);
+                          }}
+                          className={`absolute z-40 top-3 left-3 inline-flex items-center justify-center w-10 h-10 rounded-2xl border shadow-sm transition-colors ring-4 ring-white/70 backdrop-blur ${
+                            selectedIds.has(product._id)
+                              ? 'bg-primary text-white border-primary'
+                              : 'bg-white/95 text-gray-700 border-gray-200 hover:border-primary/40'
+                          }`}
+                          aria-label={selectedIds.has(product._id) ? 'Deselect product' : 'Select product'}
+                        >
+                          {selectedIds.has(product._id) ? <FiCheckSquare /> : <FiSquare />}
+                        </button>
+                      )}
+                      <ProductCard product={product} showActions={true} />
+                    </motion.div>
+                  ))}
+                </motion.div>
+              )}
 
               {/* Pagination Component */}
               {totalPages > 1 && (
@@ -933,12 +1191,52 @@ const Shop = () => {
               </button>
             </motion.div>
           )}
+
+          {/* Selection Bar */}
+          {selectionMode && selectedIds.size > 0 && (
+            <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100vw-2rem)] max-w-4xl">
+              <div className="bg-white/95 backdrop-blur-md border border-gray-200 shadow-xl rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="flex-1 text-sm font-semibold text-secondary">
+                  {selectedIds.size} selected
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={clearSelection}
+                    className="px-4 py-2 rounded-xl border border-gray-200 font-semibold text-sm hover:bg-gray-50"
+                  >
+                    Clear
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowBulkInquiry(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm bg-gradient-to-r from-primary to-secondary text-white hover:shadow-lg"
+                  >
+                    <FiSend />
+                    Send RFQ
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
       </div>
 
+      <BulkInquiryModal
+        isOpen={showBulkInquiry}
+        onClose={() => {
+          setShowBulkInquiry(false);
+        }}
+        onSuccess={() => {
+          clearSelection();
+          setShowBulkInquiry(false);
+        }}
+        products={selectedProducts}
+      />
+
       {/* Custom Scrollbar Styles */}
-      <style jsx>{`
+      <style>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 8px;
         }

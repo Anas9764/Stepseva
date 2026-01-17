@@ -52,7 +52,15 @@ const reviewRoutes = require('./routes/reviewRoutes');
 const questionRoutes = require('./routes/questionRoutes');
 const businessAccountRoutes = require('./routes/businessAccountRoutes');
 const leadRoutes = require('./routes/leadRoutes');
+const bulkRFQRoutes = require('./routes/bulkRFQRoutes');
 const activityLogRoutes = require('./routes/activityLogRoutes');
+// B2B/B2C separated routes
+const b2bCategoryRoutes = require('./routes/b2bCategoryRoutes');
+const b2bProductRoutes = require('./routes/b2bProductRoutes');
+const b2bBannerRoutes = require('./routes/b2bBannerRoutes');
+const b2cCategoryRoutes = require('./routes/b2cCategoryRoutes');
+const b2cProductRoutes = require('./routes/b2cProductRoutes');
+const b2cBannerRoutes = require('./routes/b2cBannerRoutes');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -205,9 +213,17 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/questions', questionRoutes);
 app.use('/api/business-accounts', businessAccountRoutes);
 app.use('/api/leads', leadRoutes);
+app.use('/api/bulk-rfqs', bulkRFQRoutes);
 app.use('/api/activity-logs', activityLogRoutes);
 app.use('/api', paymentRoutes);
 app.use('/api/contact', contactRoutes);
+// B2B/B2C separated routes
+app.use('/api/b2b/categories', b2bCategoryRoutes);
+app.use('/api/b2b/products', b2bProductRoutes);
+app.use('/api/b2b/banners', b2bBannerRoutes);
+app.use('/api/b2c/categories', b2cCategoryRoutes);
+app.use('/api/b2c/products', b2cProductRoutes);
+app.use('/api/b2c/banners', b2cBannerRoutes);
 
 // Error handler (must be last)
 app.use(errorHandler);

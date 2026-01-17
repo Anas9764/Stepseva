@@ -10,11 +10,14 @@ exports.getSettings = async (req, res, next) => {
     // If no settings exist, create default settings
     if (!settings) {
       settings = await Settings.create({
-        storeName: 'Eclora',
-        storeEmail: 'contact@eclora.com',
-        homepageTitle: 'Welcome to Eclora',
-        homepageSubtitle: 'Premium Handmade Candles, Bouquets, and Curated Gifts',
-        footerText: '© 2024 Eclora. All rights reserved.',
+        storeName: 'StepSeva',
+        storeEmail: 'contact@stepseva.com',
+        homepageTitle: 'StepSeva',
+        homepageSubtitle: 'Premium footwear for retailers, wholesalers, and businesses',
+        footerText: `© ${new Date().getFullYear()} StepSeva. All rights reserved.`,
+        b2b: {
+          requireLoginForInquiry: false,
+        },
       });
     }
 

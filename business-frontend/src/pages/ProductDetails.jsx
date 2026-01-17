@@ -1,11 +1,22 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiInfo, FiDollarSign, FiMessageCircle, FiPhone, FiCheckCircle, FiMapPin, FiBriefcase, FiShield, FiMail } from 'react-icons/fi';
+import {
+  FiInfo,
+  FiDollarSign,
+  FiMessageCircle,
+  FiPhone,
+  FiCheckCircle,
+  FiMapPin,
+  FiBriefcase,
+  FiShield,
+  FiMail,
+  FiCopy,
+  FiPlus,
+} from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
 import { useSelector } from 'react-redux';
 import { productService } from '../services/productService';
-import { categoryService } from '../services/categoryService';
 import ProductCard from '../components/ProductCard';
 import Loader from '../components/Loader';
 import ProductVariants from '../components/ProductVariants';
@@ -15,6 +26,7 @@ import LazyImage from '../components/LazyImage';
 import B2BPricingDisplay from '../components/B2BPricingDisplay';
 import InquiryForm from '../components/InquiryForm';
 import QuickInquiryForm from '../components/QuickInquiryForm';
+import { useRfq } from '../contexts/RfqContext';
 import toast from 'react-hot-toast';
 
 const ProductDetails = () => {
@@ -22,6 +34,7 @@ const ProductDetails = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useSelector((state) => state.auth);
   const { account } = useSelector((state) => state.businessAccount);
+  const { data: settings } = useSelector((state) => state.settings);
   const [product, setProduct] = useState(null);
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,7 +43,8 @@ const ProductDetails = () => {
   const [showInquiryForm, setShowInquiryForm] = useState(false);
   const [showQuickInquiry, setShowQuickInquiry] = useState(false);
   const [inquiryType, setInquiryType] = useState('get_best_price');
-  const [showMobileNumber, setShowMobileNumber] = useState(false);
+  const [isSavedToRfq, setIsSavedToRfq] = useState(false);
+  const { openDrawer: openRfqDrawer } = useRfq();
   
   // Supplier contact info (should come from settings/product)
   const supplierPhone = '+91-8261029700';
@@ -80,22 +94,73 @@ const ProductDetails = () => {
 
   const handleGetBestPrice = useCallback(() => {
     if (!product) return;
+
+    const requireLoginForInquiry = Boolean(settings?.b2b?.requireLoginForInquiry);
+    if (requireLoginForInquiry && !isAuthenticated) {
+      toast.error('Please login to send an inquiry');
+      navigate('/login', { state: { from: `/product/${id}` } });
+      return;
+    }
+
     // Show quick inquiry form (mobile-first, IndiaMART style)
     setShowQuickInquiry(true);
+  }, [product, settings, isAuthenticated, navigate, id]);
+
+  const handleAddToBulkRFQ = useCallback(() => {
+    if (!product) return;
+
+    try {
+      const raw = localStorage.getItem('rfqDraftItems');
+      const existing = raw ? JSON.parse(raw) : [];
+      const items = Array.isArray(existing) ? existing : [];
+
+      const next = items.some((it) => String(it.productId) === String(product._id))
+        ? items
+        : [
+            ...items,
+            {
+              productId: product._id,
+              productName: product.name,
+              quantityRequired: product.moq || 1,
+            },
+          ];
+
+      localStorage.setItem('rfqDraftItems', JSON.stringify(next));
+      setIsSavedToRfq(true);
+      toast.success('Added to RFQ list');
+      // Dispatch event to update count in header
+      window.dispatchEvent(new Event('rfqUpdated'));
+      openRfqDrawer();
+    } catch (e) {
+      console.error('Failed to add to RFQ list', e);
+      toast.error('Could not add to RFQ list');
+    }
   }, [product]);
+
+  const handleCopyLink = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      toast.success('Link copied');
+    } catch {
+      toast.error('Failed to copy link');
+    }
+  }, []);
 
   const handleGetLatestPrice = useCallback(() => {
     if (!product) return;
+
+    const requireLoginForInquiry = Boolean(settings?.b2b?.requireLoginForInquiry);
+    if (requireLoginForInquiry && !isAuthenticated) {
+      toast.error('Please login to send an inquiry');
+      navigate('/login', { state: { from: `/product/${id}` } });
+      return;
+    }
+
     // Show quick inquiry form (mobile-first, IndiaMART style)
     setShowQuickInquiry(true);
-  }, [product]);
+  }, [product, settings, isAuthenticated, navigate, id]);
 
-  const handleContactSupplier = useCallback(() => {
-    if (!product) return;
-    // Open inquiry form - size and quantity will be handled in the form (IndiaMART style)
-    setInquiryType('contact_supplier');
-    setShowInquiryForm(true);
-  }, [product]);
+  // Contact supplier is redundant for our B2B model (use Inquiry/WhatsApp/Callback)
 
   // WhatsApp Integration - IndiaMart Style
   const handleWhatsApp = useCallback(() => {
@@ -132,23 +197,49 @@ const ProductDetails = () => {
   // Request Call Back
   const handleRequestCallBack = useCallback(() => {
     if (!product) return;
+
+    const requireLoginForInquiry = Boolean(settings?.b2b?.requireLoginForInquiry);
+    if (requireLoginForInquiry && !isAuthenticated) {
+      toast.error('Please login to request a callback');
+      navigate('/login', { state: { from: `/product/${id}` } });
+      return;
+    }
+
     setInquiryType('request_callback');
     setShowInquiryForm(true);
-  }, [product]);
+  }, [product, settings, isAuthenticated, navigate, id]);
 
   // Get Best Quote
   const handleGetBestQuote = useCallback(() => {
     if (!product) return;
+
+    const requireLoginForInquiry = Boolean(settings?.b2b?.requireLoginForInquiry);
+    if (requireLoginForInquiry && !isAuthenticated) {
+      toast.error('Please login to send an inquiry');
+      navigate('/login', { state: { from: `/product/${id}` } });
+      return;
+    }
+
     setInquiryType('get_best_price');
     setShowInquiryForm(true);
-  }, [product]);
+  }, [product, settings, isAuthenticated, navigate, id]);
 
-  // Yes! I am Interested
-  const handleYesInterested = useCallback(() => {
+  // Custom Quote (for "Need a custom quote?" section)
+  const handleCustomQuote = useCallback(() => {
     if (!product) return;
-    setInquiryType('interested');
+
+    const requireLoginForInquiry = Boolean(settings?.b2b?.requireLoginForInquiry);
+    if (requireLoginForInquiry && !isAuthenticated) {
+      toast.error('Please login to request a custom quote');
+      navigate('/login', { state: { from: `/product/${id}` } });
+      return;
+    }
+
+    setInquiryType('customization');
     setShowInquiryForm(true);
-  }, [product]);
+  }, [product, settings, isAuthenticated, navigate, id]);
+
+  // "Yes! I am Interested" CTA removed (duplicate of Inquiry)
 
   // Quantity and size selection removed from main page - handled in inquiry form (IndiaMART style)
 
@@ -177,7 +268,7 @@ const ProductDetails = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-sky/20">
-      <div className="container mx-auto px-4 py-8 lg:py-12">
+      <div className="container mx-auto px-4 py-6 lg:py-10">
         {/* Breadcrumb */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -191,10 +282,10 @@ const ProductDetails = () => {
           <span className="text-text font-semibold truncate max-w-xs">{product.name}</span>
         </motion.div>
 
-        {/* Product Details - IndiaMART Style Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 mb-16">
-          {/* Images */}
-          <div>
+        {/* Product Details */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 mb-14">
+          {/* Left: Images */}
+          <div className="lg:col-span-7">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -204,7 +295,7 @@ const ProductDetails = () => {
               <LazyImage
                 src={images[selectedImage]}
                 alt={product.name}
-                className="w-full h-[500px] lg:h-[600px] object-cover"
+                className="w-full h-[360px] sm:h-[440px] lg:h-[560px] object-cover"
               />
             </motion.div>
             
@@ -233,13 +324,18 @@ const ProductDetails = () => {
             )}
           </div>
 
-        {/* Product Info */}
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-white rounded-2xl p-6 lg:p-8 shadow-xl"
-        >
+          {/* Right: Sticky Purchase/Inquiry Card */}
+          <motion.aside
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.15 }}
+            className="lg:col-span-5"
+          >
+            <div className="lg:sticky lg:top-24 bg-white rounded-2xl p-6 lg:p-7 shadow-xl border border-gray-100 overflow-hidden">
+              <div className="-mx-6 -mt-6 mb-5 px-6 pt-6 pb-4 bg-gradient-to-r from-primary/10 via-white to-secondary/10 border-b border-gray-100">
+                <div className="text-xs text-gray-600">StepSeva Verified Listing</div>
+                <div className="text-sm font-semibold text-secondary">Fast quotes • WhatsApp support</div>
+              </div>
           {/* Category & Badges */}
           <div className="flex items-center gap-3 mb-4 flex-wrap">
             <span className="text-xs text-primary uppercase tracking-wider font-bold bg-primary/10 px-3 py-1 rounded-full">
@@ -266,8 +362,22 @@ const ProductDetails = () => {
             {product.name}
           </h1>
 
-          {/* Price & Stock - IndiaMART Style */}
-          <div className="mb-6 pb-6 border-b border-gray-200">
+          <div className="flex items-center gap-2 text-xs text-gray-600 mb-4">
+            <span className="inline-flex items-center gap-1 rounded-full bg-gray-50 border border-gray-200 px-3 py-1">
+              <FiBriefcase size={14} /> MOQ: <span className="font-semibold text-gray-900">{product.moq || 1}</span>
+            </span>
+            <button
+              type="button"
+              onClick={handleCopyLink}
+              className="inline-flex items-center gap-1 rounded-full bg-gray-50 border border-gray-200 px-3 py-1 hover:bg-gray-100"
+              title="Copy product link"
+            >
+              <FiCopy size={14} /> Copy Link
+            </button>
+          </div>
+
+          {/* Price & Stock */}
+          <div className="mb-5 pb-5 border-b border-gray-200">
             <div className="flex items-start justify-between mb-4">
               <div className="flex-1">
                 <B2BPricingDisplay product={product} />
@@ -309,243 +419,68 @@ const ProductDetails = () => {
             </div>
           </div>
 
-          {/* Product Specifications Table (IndiaMART Style) */}
-          <div className="mb-6 bg-white border border-gray-200 rounded-lg overflow-hidden">
-            <h3 className="bg-gray-50 px-6 py-4 font-bold text-secondary border-b border-gray-200">
-              Product Details
-            </h3>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <tbody className="divide-y divide-gray-200">
-                  <tr className="hover:bg-blue-50 transition-colors">
-                    <td className="px-6 py-4 text-sm font-bold text-gray-700 w-1/3 bg-gray-50">Footwear Type</td>
-                    <td className="px-6 py-4 text-sm font-semibold text-gray-900 capitalize">{product.footwearType || 'N/A'}</td>
-                  </tr>
-                  <tr className="hover:bg-blue-50 transition-colors">
-                    <td className="px-6 py-4 text-sm font-bold text-gray-700 bg-gray-50">Material</td>
-                    <td className="px-6 py-4 text-sm font-semibold text-gray-900">Premium Quality</td>
-                  </tr>
-                  <tr className="hover:bg-blue-50 transition-colors">
-                    <td className="px-6 py-4 text-sm font-bold text-gray-700 bg-gray-50">Occasion/Usage</td>
-                    <td className="px-6 py-4 text-sm font-semibold text-gray-900 capitalize">{product.footwearType === 'formal' ? 'Formal Wear' : product.footwearType === 'sports' ? 'Sports' : 'Casual Wear'}</td>
-                  </tr>
-                  <tr className="hover:bg-blue-50 transition-colors">
-                    <td className="px-6 py-4 text-sm font-bold text-gray-700 bg-gray-50">Pattern</td>
-                    <td className="px-6 py-4 text-sm font-semibold text-gray-900">Printed/Solid</td>
-                  </tr>
-                  <tr className="hover:bg-blue-50 transition-colors">
-                    <td className="px-6 py-4 text-sm font-bold text-gray-700 bg-gray-50">Size (UK / India)</td>
-                    <td className="px-6 py-4 text-sm font-semibold text-gray-900">
-                      {product.sizes && product.sizes.length > 0 ? product.sizes.join(', ') : 'All Sizes'}
-                    </td>
-                  </tr>
-                  <tr className="hover:bg-blue-50 transition-colors">
-                    <td className="px-6 py-4 text-sm font-bold text-gray-700 bg-gray-50">Color</td>
-                    <td className="px-6 py-4 text-sm font-semibold text-gray-900">
-                      {product.variantColor || 'Multi Color'}
-                    </td>
-                  </tr>
-                  <tr className="hover:bg-blue-50 transition-colors">
-                    <td className="px-6 py-4 text-sm font-bold text-gray-700 bg-gray-50">Sole Material</td>
-                    <td className="px-6 py-4 text-sm font-semibold text-gray-900">Rubber</td>
-                  </tr>
-                  <tr className="hover:bg-blue-50 transition-colors">
-                    <td className="px-6 py-4 text-sm font-bold text-gray-700 bg-gray-50">Heel Height</td>
-                    <td className="px-6 py-4 text-sm font-semibold text-gray-900">No Heel</td>
-                  </tr>
-                  <tr className="hover:bg-blue-50 transition-colors">
-                    <td className="px-6 py-4 text-sm font-bold text-gray-700 bg-gray-50">Packaging Type</td>
-                    <td className="px-6 py-4 text-sm font-semibold text-gray-900">Box</td>
-                  </tr>
-                  <tr className="hover:bg-blue-50 transition-colors">
-                    <td className="px-6 py-4 text-sm font-bold text-gray-700 bg-gray-50">Country of Origin</td>
-                    <td className="px-6 py-4 text-sm font-semibold text-gray-900">Made in India</td>
-                  </tr>
-                  <tr className="hover:bg-blue-50 transition-colors">
-                    <td className="px-6 py-4 text-sm font-bold text-gray-700 bg-gray-50">Availability</td>
-                    <td className="px-6 py-4 text-sm font-semibold text-gray-900">
-                      {availableStock > 0 ? (
-                        <span className="inline-flex items-center gap-1 text-green-600 font-bold">
-                          <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                          In Stock
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-red-600 font-bold">
-                          <span className="w-2 h-2 bg-red-500 rounded-full"></span>
-                          Out of Stock
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Product Description - Enhanced */}
-          <div className="border-2 border-gray-200 rounded-xl p-6 mb-6 bg-gray-50">
-            <h3 className="font-bold text-lg text-secondary mb-4 flex items-center gap-2">
-              <span className="w-1 h-6 bg-primary rounded"></span>
-              Product Description
-            </h3>
-            <p className="text-gray-700 leading-relaxed mb-5 text-base">{product.description}</p>
-            
-            {/* Product Features - Enhanced */}
-            <div className="bg-white p-5 rounded-lg border border-gray-200">
-              <h4 className="font-bold text-text mb-3 flex items-center gap-2">
-                <FiCheckCircle className="text-green-600" size={18} />
-                Key Features:
-              </h4>
-              <ul className="space-y-2.5 text-sm text-gray-700">
-                <li className="flex items-start gap-2">
-                  <span className="text-green-600 font-bold mt-0.5">✓</span>
-                  <span>Premium Quality Materials for durability</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-green-600 font-bold mt-0.5">✓</span>
-                  <span>Comfortable Fit for all-day wear</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-green-600 font-bold mt-0.5">✓</span>
-                  <span>Durable Construction for long-lasting use</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-green-600 font-bold mt-0.5">✓</span>
-                  <span>Stylish Design for modern appeal</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-green-600 font-bold mt-0.5">✓</span>
-                  <span>Available in Multiple Sizes</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          {/* Product Variants (Color Options) */}
-          {product.variants && product.variants.length > 1 && (
-            <ProductVariants variants={product.variants} currentProductId={product._id} />
-          )}
-
-          {product.brand && (
-            <div className="mb-6">
-              <span className="text-sm text-gray-600">Brand: </span>
-              <span className="text-sm font-semibold text-text">{product.brand}</span>
-            </div>
-          )}
-
-          {/* Gender and Type Display */}
-          {(product.gender || product.footwearType) && (
-            <div className="mb-6 flex gap-4">
-              {product.gender && (
-                <div>
-                  <span className="text-sm text-gray-600">Gender: </span>
-                  <span className="text-sm font-semibold text-text capitalize">{product.gender}</span>
-                </div>
-              )}
-              {product.footwearType && (
-                <div>
-                  <span className="text-sm text-gray-600">Type: </span>
-                  <span className="text-sm font-semibold text-text capitalize">{product.footwearType}</span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Size and Quantity Info - IndiaMART Style (Info only, no selectors) */}
-          {product.sizes && product.sizes.length > 0 && (
-            <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-sm font-semibold text-gray-700">Available Sizes:</span>
-                <span className="text-sm text-gray-900 font-medium">
-                  {product.sizes.join(', ')}
-                </span>
-              </div>
-              {product.moq && product.moq > 1 && (
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="text-sm font-semibold text-gray-700">Minimum Order Quantity (MOQ):</span>
-                  <span className="text-sm text-primary font-bold">{product.moq} units</span>
-                </div>
-              )}
-              <p className="text-xs text-gray-500 mt-2">
-                Size and quantity can be specified in the inquiry form
-              </p>
-            </div>
-          )}
-
-          {/* Action Buttons - Brand Colors */}
-          <div className="mb-6 space-y-3">
-            {/* Get Best Quote Button - Primary Brand Color */}
+          {/* Primary CTAs */}
+          <div className="space-y-3">
             <button
               onClick={handleGetBestQuote}
               disabled={availableStock === 0}
-              className={`w-full flex items-center justify-center space-x-2 px-8 py-4 rounded-lg font-bold text-lg transition-all duration-300 shadow-lg hover:shadow-xl ${
+              className={`w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-semibold transition-all shadow-sm hover:shadow-md ${
                 availableStock === 0
                   ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-primary to-secondary text-white hover:from-secondary hover:to-primary transform hover:-translate-y-0.5'
+                  : 'bg-gradient-to-r from-primary to-secondary text-white'
               }`}
             >
-              <FiMail size={22} />
-              <span>Get Best Quote</span>
+              <FiMail size={18} /> Get Best Quote
             </button>
-            
-            {/* WhatsApp Button - Keep WhatsApp Green */}
-            <button
-              onClick={handleWhatsApp}
-              disabled={availableStock === 0}
-              className={`w-full flex items-center justify-center space-x-2 px-8 py-4 rounded-lg font-bold text-lg transition-all duration-300 shadow-lg hover:shadow-xl ${
-                availableStock === 0
-                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'bg-[#25D366] text-white hover:bg-[#20BA5A] transform hover:-translate-y-0.5'
-              }`}
-            >
-              <FaWhatsapp size={22} />
-              <span>Chat on WhatsApp</span>
-            </button>
-            
+
             <div className="grid grid-cols-2 gap-3">
               <button
-                onClick={handleRequestCallBack}
+                type="button"
+                onClick={handleWhatsApp}
                 disabled={availableStock === 0}
-                className={`flex items-center justify-center space-x-2 px-6 py-3 rounded-lg font-semibold text-base transition-all duration-300 border-2 ${
+                className={`inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold transition-all border ${
                   availableStock === 0
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-300'
-                    : 'bg-primary border-primary text-white hover:bg-secondary hover:border-secondary transform hover:-translate-y-0.5'
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200'
+                    : 'bg-[#25D366] text-white border-[#25D366] hover:bg-[#20BA5A]'
                 }`}
               >
-                <FiPhone size={18} />
-                <span>Request Call Back</span>
+                <FaWhatsapp size={18} /> WhatsApp
               </button>
               <button
-                onClick={handleContactSupplier}
+                type="button"
+                onClick={handleRequestCallBack}
                 disabled={availableStock === 0}
-                className={`flex items-center justify-center space-x-2 px-6 py-3 rounded-lg font-semibold text-base transition-all duration-300 border-2 ${
+                className={`inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold transition-all border ${
                   availableStock === 0
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-300'
-                    : 'bg-white border-primary text-primary hover:bg-primary hover:text-white transform hover:-translate-y-0.5'
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200'
+                    : 'bg-white text-primary border-primary hover:bg-primary hover:text-white'
                 }`}
               >
-                <FiMessageCircle size={18} />
-                <span>Contact Supplier</span>
+                <FiPhone size={18} /> Call Back
               </button>
             </div>
-            
-            {/* Yes! I am Interested Button - Secondary Brand Color */}
+
             <button
-              onClick={handleYesInterested}
-              disabled={availableStock === 0}
-              className={`w-full flex items-center justify-center space-x-2 px-8 py-4 rounded-lg font-bold text-base transition-all duration-300 border-2 ${
-                availableStock === 0
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-300'
-                  : 'bg-white border-secondary text-secondary hover:bg-secondary hover:text-white transform hover:-translate-y-0.5'
+              type="button"
+              onClick={handleAddToBulkRFQ}
+              className={`w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all border ${
+                isSavedToRfq ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-800 border-gray-200 hover:bg-gray-100'
               }`}
             >
-              <FiCheckCircle size={20} />
-              <span>Yes! I am Interested</span>
+              <FiPlus size={18} /> {isSavedToRfq ? 'Added to RFQ List' : 'Add to Bulk RFQ'}
+            </button>
+
+            <button
+              type="button"
+              onClick={openRfqDrawer}
+              className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all border border-gray-200 bg-white hover:bg-gray-50"
+            >
+              View RFQ List
             </button>
           </div>
-          
-          {/* Trust Badges - Enhanced Design */}
-          <div className="mb-6 p-5 bg-gradient-to-br from-green-50 via-blue-50 to-green-50 rounded-xl border-2 border-green-200 shadow-sm">
+
+          {/* Trust Badges */}
+          <div className="mt-6 p-5 bg-gradient-to-br from-green-50 via-blue-50 to-green-50 rounded-xl border border-green-200 shadow-sm">
             <div className="flex flex-wrap items-center justify-center gap-6 text-sm">
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
@@ -567,17 +502,149 @@ const ProductDetails = () => {
               </div>
             </div>
           </div>
-          
-        </motion.div>
+
+            </div>
+          </motion.aside>
         </div>
+
+        {/* Details Sections */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="lg:col-span-8 space-y-6">
+            {/* Product Specifications */}
+            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+              <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                <h3 className="font-bold text-secondary">Product Details</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <tbody className="divide-y divide-gray-200">
+                    <tr className="hover:bg-blue-50 transition-colors">
+                      <td className="px-6 py-4 text-sm font-semibold text-gray-700 w-1/3 bg-gray-50">Footwear Type</td>
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900 capitalize">{product.footwearType || 'N/A'}</td>
+                    </tr>
+                    {product.brand ? (
+                      <tr className="hover:bg-blue-50 transition-colors">
+                        <td className="px-6 py-4 text-sm font-semibold text-gray-700 bg-gray-50">Brand</td>
+                        <td className="px-6 py-4 text-sm font-medium text-gray-900">{product.brand}</td>
+                      </tr>
+                    ) : null}
+                    {product.gender ? (
+                      <tr className="hover:bg-blue-50 transition-colors">
+                        <td className="px-6 py-4 text-sm font-semibold text-gray-700 bg-gray-50">Gender</td>
+                        <td className="px-6 py-4 text-sm font-medium text-gray-900 capitalize">{product.gender}</td>
+                      </tr>
+                    ) : null}
+                    <tr className="hover:bg-blue-50 transition-colors">
+                      <td className="px-6 py-4 text-sm font-semibold text-gray-700 bg-gray-50">Available Sizes</td>
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                        {product.sizes && product.sizes.length > 0 ? product.sizes.join(', ') : 'All Sizes'}
+                      </td>
+                    </tr>
+                    <tr className="hover:bg-blue-50 transition-colors">
+                      <td className="px-6 py-4 text-sm font-semibold text-gray-700 bg-gray-50">Color</td>
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900">{product.variantColor || product.color || 'Multi Color'}</td>
+                    </tr>
+                    <tr className="hover:bg-blue-50 transition-colors">
+                      <td className="px-6 py-4 text-sm font-semibold text-gray-700 bg-gray-50">MOQ</td>
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900">{product.moq || 1} units</td>
+                    </tr>
+                    <tr className="hover:bg-blue-50 transition-colors">
+                      <td className="px-6 py-4 text-sm font-semibold text-gray-700 bg-gray-50">Availability</td>
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                        {availableStock > 0 ? (
+                          <span className="inline-flex items-center gap-2 text-green-700 font-semibold">
+                            <span className="w-2 h-2 bg-green-500 rounded-full"></span> In Stock
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-2 text-red-700 font-semibold">
+                            <span className="w-2 h-2 bg-red-500 rounded-full"></span> Out of Stock
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Product Description */}
+            <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+              <h3 className="font-bold text-secondary mb-3">Product Description</h3>
+              <p className="text-gray-700 leading-relaxed">{product.description}</p>
+            </div>
+
+            {/* Variants */}
+            {product.variants && product.variants.length > 1 ? (
+              <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+                <h3 className="font-bold text-secondary mb-4">More Options</h3>
+                <ProductVariants variants={product.variants} currentProductId={product._id} />
+              </div>
+            ) : null}
+          </div>
+
+          <div className="lg:col-span-4 space-y-6">
+            <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+              <h3 className="font-bold text-secondary mb-3">Need a custom quote?</h3>
+              <p className="text-sm text-gray-600 mb-4">Share size mix, colors, delivery city, and timeline. We'll respond quickly with the best possible quote.</p>
+              <button
+                onClick={handleCustomQuote}
+                disabled={availableStock === 0}
+                className={`w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all ${
+                  availableStock === 0 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-primary text-white hover:bg-secondary'
+                }`}
+              >
+                <FiMail size={18} /> Send Inquiry
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile Sticky CTA Bar */}
+        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white/95 backdrop-blur lg:hidden">
+          <div className="container mx-auto px-4 py-3 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleGetBestQuote}
+              disabled={availableStock === 0}
+              className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold ${
+                availableStock === 0 ? 'bg-gray-200 text-gray-400' : 'bg-primary text-white'
+              }`}
+            >
+              <FiMail size={18} /> Quote
+            </button>
+            <button
+              type="button"
+              onClick={handleWhatsApp}
+              disabled={availableStock === 0}
+              className={`inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold border ${
+                availableStock === 0 ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-[#25D366] text-white border-[#25D366]'
+              }`}
+            >
+              <FaWhatsapp size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={openRfqDrawer}
+              className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold border border-gray-200 bg-white"
+            >
+              RFQ
+            </button>
+          </div>
+        </div>
+
+        <div className="h-20 lg:hidden" />
 
         {/* Inquiry Form Modals */}
         <InquiryForm
           isOpen={showInquiryForm}
-          onClose={() => setShowInquiryForm(false)}
+          onClose={() => {
+            setShowInquiryForm(false);
+            setInquiryType('get_best_price'); // Reset to default
+          }}
           product={product}
           defaultQuantity={product?.moq || 1}
           defaultSize={''}
+          inquiryType={inquiryType}
         />
         
         <QuickInquiryForm
@@ -588,6 +655,8 @@ const ProductDetails = () => {
             setShowQuickInquiry(false);
           }}
         />
+
+        {/* RfqDrawer is now handled globally in App.jsx */}
 
         {/* Similar Products Section (IndiaMART Style) */}
         {similarProducts.length > 0 && (

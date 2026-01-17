@@ -48,6 +48,7 @@ const B2BTeamManagement = lazy(() => import('./pages/B2BTeamManagement'));
 const B2BCalendar = lazy(() => import('./pages/B2BCalendar'));
 const B2BBuyerCRM = lazy(() => import('./pages/B2BBuyerCRM'));
 const B2BProductInquiryAnalytics = lazy(() => import('./pages/B2BProductInquiryAnalytics'));
+const BulkRFQs = lazy(() => import('./pages/BulkRFQs'));
 
 // B2C Pages
 const B2CDashboard = lazy(() => import('./pages/B2CDashboard'));
@@ -116,22 +117,34 @@ function App() {
                   <Route path="b2b">
                     <Route index element={<B2BDashboard />} />
                     <Route path="leads" element={<Leads />} />
+                    {/* Bulk RFQs merged into B2B Leads - use filter "Inquiry Type: Bulk RFQ" */}
+                    {/* <Route path="bulk-rfqs" element={<BulkRFQs />} /> */}
                     <Route path="business-accounts" element={<BusinessAccounts />} />
                     <Route path="orders" element={<Orders />} />
+                    <Route path="products" element={<Products />} />
+                    <Route path="categories" element={<Categories />} />
+                    <Route path="banners" element={<Banners />} />
+                    <Route path="reviews" element={<Reviews />} />
+                    <Route path="questions" element={<Questions />} />
                     <Route path="lead-analytics" element={<B2BLeadAnalytics />} />
                     <Route path="product-analytics" element={<B2BProductInquiryAnalytics />} />
-                    <Route path="quotes" element={<B2BQuoteManagement />} />
+                    {/* Quote Management removed - redundant with B2B Leads (just filter by status='quoted') */}
+                    {/* <Route path="quotes" element={<B2BQuoteManagement />} /> */}
                     <Route path="reports" element={<B2BReportsExport />} />
+                    {/* Hidden/Unused modules - commented out as they're not required based on business frontend
                     <Route path="communication" element={<B2BCommunicationCenter />} />
                     <Route path="team" element={<B2BTeamManagement />} />
                     <Route path="calendar" element={<B2BCalendar />} />
                     <Route path="crm" element={<B2BBuyerCRM />} />
+                    */}
                   </Route>
 
                   {/* B2C Module Routes */}
                   <Route path="b2c">
                     <Route index element={<B2CDashboard />} />
                     <Route path="orders" element={<B2COrders />} />
+                    <Route path="products" element={<Products />} />
+                    <Route path="categories" element={<Categories />} />
                     <Route path="reviews" element={<Reviews />} />
                     <Route path="questions" element={<Questions />} />
                     <Route path="analytics" element={<B2CAnalytics />} />

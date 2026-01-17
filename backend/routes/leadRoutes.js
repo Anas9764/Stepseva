@@ -9,9 +9,11 @@ const {
   getLeadStats,
 } = require('../controllers/leadController');
 const { protect, admin } = require('../middleware/authMiddleware');
+const { requireAuthIfB2BInquiryLocked } = require('../middleware/b2bSettingsGate');
 
-// Public route - anyone can submit an inquiry
-router.post('/', createLead);
+// Public route - optional login; can become login-required via Settings toggle
+// NOTE: `protect` is not used here because we want anonymous inquiries when toggle is off.
+router.post('/', requireAuthIfB2BInquiryLocked, createLead);
 
 // Protected routes - Buyers can view their own inquiries
 router.get('/my-inquiries', protect, getMyInquiries);

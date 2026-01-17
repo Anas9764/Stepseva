@@ -25,6 +25,7 @@ import {
   ChevronRight,
   History,
   Heart,
+  ListChecks,
 } from 'lucide-react';
 import useNotifications from '../hooks/useNotifications';
 
@@ -57,6 +58,7 @@ const Sidebar = ({ isOpen, onClose }) => {
       label: 'B2B Leads',
       badge: notifications.newLeads > 0 ? notifications.newLeads : null,
       onNavigate: markLeadsAsSeen,
+      // Note: Bulk RFQs are now merged into B2B Leads
     },
     { 
       path: '/b2b/business-accounts', 
@@ -69,6 +71,35 @@ const Sidebar = ({ isOpen, onClose }) => {
       label: 'B2B Orders',
     },
     {
+      path: '/b2b/products',
+      icon: Package,
+      label: 'Products',
+    },
+    {
+      path: '/b2b/categories',
+      icon: Grid3x3,
+      label: 'Categories',
+    },
+    {
+      path: '/b2b/banners',
+      icon: Image,
+      label: 'Banners',
+    },
+    { 
+      path: '/b2b/reviews', 
+      icon: Star, 
+      label: 'Customer Reviews',
+      badge: notifications.newReviews > 0 ? notifications.newReviews : null,
+      onNavigate: markReviewsAsSeen,
+    },
+    { 
+      path: '/b2b/questions', 
+      icon: MessageCircle, 
+      label: 'Customer Q&A',
+      badge: notifications.newQuestions > 0 ? notifications.newQuestions : null,
+      onNavigate: markQuestionsAsSeen,
+    },
+    {
       path: '/b2b/lead-analytics',
       icon: BarChart3,
       label: 'Lead Analytics',
@@ -78,36 +109,40 @@ const Sidebar = ({ isOpen, onClose }) => {
       icon: BarChart3,
       label: 'Product Analytics',
     },
-    {
-      path: '/b2b/quotes',
-      icon: FileText,
-      label: 'Quote Management',
-    },
+    // Quote Management removed - redundant with B2B Leads (just filter by status='quoted')
+    // {
+    //   path: '/b2b/quotes',
+    //   icon: FileText,
+    //   label: 'Quote Management',
+    // },
     {
       path: '/b2b/reports',
       icon: FileText,
       label: 'Reports & Export',
     },
-    {
-      path: '/b2b/communication',
-      icon: Radio,
-      label: 'Communication Center',
-    },
-    {
-      path: '/b2b/team',
-      icon: Users2,
-      label: 'Team Management',
-    },
-    {
-      path: '/b2b/calendar',
-      icon: CalendarDays,
-      label: 'Calendar & Reminders',
-    },
-    {
-      path: '/b2b/crm',
-      icon: Users,
-      label: 'Buyer CRM',
-    },
+    // Hidden modules - not required based on business frontend usage
+    // These modules are not used by customers in the business frontend
+    // Uncomment if you need them in the future
+    // {
+    //   path: '/b2b/communication',
+    //   icon: Radio,
+    //   label: 'Communication Center',
+    // },
+    // {
+    //   path: '/b2b/team',
+    //   icon: Users2,
+    //   label: 'Team Management',
+    // },
+    // {
+    //   path: '/b2b/calendar',
+    //   icon: CalendarDays,
+    //   label: 'Calendar & Reminders',
+    // },
+    // {
+    //   path: '/b2b/crm',
+    //   icon: Users,
+    //   label: 'Buyer CRM',
+    // },
   ];
 
   // B2C-specific menu items
@@ -121,6 +156,21 @@ const Sidebar = ({ isOpen, onClose }) => {
       path: '/b2c/orders',
       icon: ShoppingBag,
       label: 'B2C Orders',
+    },
+    {
+      path: '/b2c/products',
+      icon: Package,
+      label: 'Products',
+    },
+    {
+      path: '/b2c/categories',
+      icon: Grid3x3,
+      label: 'Categories',
+    },
+    {
+      path: '/b2c/banners',
+      icon: Image,
+      label: 'Banners',
     },
     { 
       path: '/b2c/reviews', 

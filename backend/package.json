@@ -4,6 +4,7 @@
   "description": "StepSeva Footwear eCommerce Backend API",
   "main": "index.js",
   "scripts": {
+      "seed:demo": "node seedStepSevaDemo.js",
     "start": "node index.js",
     "dev": "nodemon index.js",
     "seed": "node seedProducts.js",
