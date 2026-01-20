@@ -87,7 +87,7 @@ const ProductReviews = ({ productId }) => {
       const response = await reviewService.getProductReviews(productId, params);
       setReviews(response.data.reviews || []);
       setTotalPages(response.data.pagination?.pages || 1);
-      
+
       if (response.data.averageRating !== undefined) {
         setRatingStats({
           averageRating: response.data.averageRating || 0,
@@ -179,11 +179,10 @@ const ProductReviews = ({ productId }) => {
         {[1, 2, 3, 4, 5].map((star) => (
           <FiStar
             key={star}
-            className={`${size} ${
-              star <= rating
+            className={`${size} ${star <= rating
                 ? 'text-yellow-400 fill-yellow-400'
                 : 'text-gray-300'
-            }`}
+              }`}
           />
         ))}
       </div>
@@ -338,8 +337,8 @@ const ProductReviews = ({ productId }) => {
             {[5, 4, 3, 2, 1].map((rating) => {
               const dist = ratingStats.distribution.find((d) => d._id === rating);
               const count = dist?.count || 0;
-              const percentage = ratingStats.totalReviews > 0 
-                ? (count / ratingStats.totalReviews) * 100 
+              const percentage = ratingStats.totalReviews > 0
+                ? (count / ratingStats.totalReviews) * 100
                 : 0;
 
               return (
@@ -398,10 +397,24 @@ const ProductReviews = ({ productId }) => {
 
       {/* Reviews List */}
       {loading ? (
-        <div className="text-center py-8">Loading reviews...</div>
+        <div className="text-center py-20 bg-gray-50 rounded-2xl border border-gray-100 italic text-gray-400">
+          <div className="animate-pulse">Loading verified reviews...</div>
+        </div>
       ) : reviews.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
-          No reviews yet. Be the first to review this product!
+        <div className="text-center py-20 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
+          <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+            <FiStar className="text-gray-200" size={32} />
+          </div>
+          <h3 className="text-lg font-bold text-secondary mb-2">Be the first to share your experience</h3>
+          <p className="text-sm text-gray-500 max-w-xs mx-auto mb-6">Your feedback helps other B2B buyers make informed decisions.</p>
+          {isAuthenticated && (
+            <button
+              onClick={() => setShowReviewForm(true)}
+              className="px-6 py-2 bg-white text-primary border border-primary hover:bg-primary hover:text-white rounded-full font-bold transition-all shadow-sm"
+            >
+              Write First Review
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-6">

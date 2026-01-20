@@ -281,10 +281,24 @@ const ProductQnA = ({ productId }) => {
 
       {/* Questions List */}
       {loading ? (
-        <div className="text-center py-8">Loading questions...</div>
+        <div className="text-center py-20 bg-gray-50 rounded-2xl border border-gray-100 italic text-gray-400">
+          <div className="animate-pulse">Loading community questions...</div>
+        </div>
       ) : questions.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
-          No questions yet. Be the first to ask a question!
+        <div className="text-center py-20 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
+          <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+            <FiMessageCircle className="text-gray-200" size={32} />
+          </div>
+          <h3 className="text-lg font-bold text-secondary mb-2">Have a question about this product?</h3>
+          <p className="text-sm text-gray-500 max-w-xs mx-auto mb-6">Ask our community of experts and get the answers you need.</p>
+          {isAuthenticated && (
+            <button
+              onClick={() => setShowQuestionForm(true)}
+              className="px-6 py-2 bg-white text-primary border border-primary hover:bg-primary hover:text-white rounded-full font-bold transition-all shadow-sm"
+            >
+              Ask First Question
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-4">
@@ -364,11 +378,10 @@ const ProductQnA = ({ productId }) => {
                         {activeAnswers.map((answer) => (
                           <div
                             key={answer._id}
-                            className={`p-4 rounded-lg ${
-                              answer.isAdmin
+                            className={`p-4 rounded-lg ${answer.isAdmin
                                 ? 'bg-blue-50 border-l-4 border-blue-500'
                                 : 'bg-gray-50'
-                            }`}
+                              }`}
                           >
                             <div className="flex items-start justify-between mb-2">
                               <div>

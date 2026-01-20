@@ -47,7 +47,10 @@ html {
   scroll-behavior: smooth;
 }
 
-/* Custom animations */
+/* ========================================
+   ENHANCED ANIMATIONS
+   ======================================== */
+
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -79,6 +82,79 @@ html {
   }
 }
 
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes floatSlow {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-15px) rotate(2deg);
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(30, 115, 217, 0.4);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 15px rgba(30, 115, 217, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(30, 115, 217, 0);
+  }
+}
+
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(30, 115, 217, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(30, 115, 217, 0.5);
+  }
+}
+
+@keyframes shine {
+  from {
+    background-position: -200% center;
+  }
+  to {
+    background-position: 200% center;
+  }
+}
+
+@keyframes gradientMove {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+/* Animation Classes */
 .animate-fade-in-up {
   animation: fadeInUp 0.6s ease-out;
 }
@@ -91,7 +167,37 @@ html {
   animation: slideInRight 0.6s ease-out;
 }
 
-/* Gradient text */
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-float-slow {
+  animation: floatSlow 5s ease-in-out infinite;
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite;
+}
+
+.animate-shine {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  background-size: 200% 100%;
+  animation: shine 2s linear infinite;
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradientMove 8s ease infinite;
+}
+
+/* ========================================
+   GRADIENT UTILITIES
+   ======================================== */
+
 .gradient-text {
   background: linear-gradient(135deg, #1E73D9 0%, #0F2C4C 100%);
   -webkit-background-clip: text;
@@ -99,7 +205,42 @@ html {
   background-clip: text;
 }
 
-/* Glass morphism effect */
+.gradient-text-gold {
+  background: linear-gradient(135deg, #D4AF37 0%, #F4E4BC 50%, #D4AF37 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-primary {
+  background: linear-gradient(135deg, #1E73D9 0%, #0F2C4C 100%);
+}
+
+.gradient-primary-reverse {
+  background: linear-gradient(135deg, #0F2C4C 0%, #1E73D9 100%);
+}
+
+.gradient-gold {
+  background: linear-gradient(135deg, #D4AF37 0%, #F4E4BC 50%, #D4AF37 100%);
+}
+
+.gradient-hero {
+  background: linear-gradient(135deg, rgba(15, 44, 76, 0.95) 0%, rgba(30, 115, 217, 0.85) 50%, rgba(15, 44, 76, 0.95) 100%);
+}
+
+.gradient-mesh {
+  background: 
+    radial-gradient(at 40% 20%, rgba(30, 115, 217, 0.15) 0px, transparent 50%),
+    radial-gradient(at 80% 0%, rgba(15, 44, 76, 0.1) 0px, transparent 50%),
+    radial-gradient(at 0% 50%, rgba(30, 115, 217, 0.1) 0px, transparent 50%),
+    radial-gradient(at 80% 50%, rgba(212, 175, 55, 0.08) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(30, 115, 217, 0.1) 0px, transparent 50%);
+}
+
+/* ========================================
+   GLASS MORPHISM UTILITIES
+   ======================================== */
+
 .glass {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
@@ -107,40 +248,312 @@ html {
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-/* Modern card hover effect */
+.glass-dark {
+  background: rgba(15, 44, 76, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 
+    0 8px 32px rgba(15, 44, 76, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.glass-card-premium {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 
+    0 8px 32px rgba(15, 44, 76, 0.12),
+    0 2px 8px rgba(30, 115, 217, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+/* ========================================
+   PREMIUM SHADOWS
+   ======================================== */
+
+.shadow-premium {
+  box-shadow: 
+    0 4px 6px -1px rgba(15, 44, 76, 0.1),
+    0 2px 4px -1px rgba(15, 44, 76, 0.06);
+}
+
+.shadow-premium-lg {
+  box-shadow: 
+    0 10px 15px -3px rgba(15, 44, 76, 0.1),
+    0 4px 6px -2px rgba(15, 44, 76, 0.05),
+    0 0 0 1px rgba(30, 115, 217, 0.02);
+}
+
+.shadow-premium-xl {
+  box-shadow: 
+    0 20px 25px -5px rgba(15, 44, 76, 0.1),
+    0 10px 10px -5px rgba(15, 44, 76, 0.04),
+    0 0 40px rgba(30, 115, 217, 0.05);
+}
+
+.shadow-glow-primary {
+  box-shadow: 
+    0 10px 40px rgba(30, 115, 217, 0.25),
+    0 0 0 1px rgba(30, 115, 217, 0.1);
+}
+
+.shadow-glow-gold {
+  box-shadow: 
+    0 10px 40px rgba(212, 175, 55, 0.25),
+    0 0 0 1px rgba(212, 175, 55, 0.1);
+}
+
+/* ========================================
+   CARD EFFECTS
+   ======================================== */
+
 .card-hover {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .card-hover:hover {
   transform: translateY(-8px);
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  box-shadow: 
+    0 20px 25px -5px rgba(0, 0, 0, 0.1), 
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
-/* Button hover effects */
+.card-3d {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-style: preserve-3d;
+}
+
+.card-3d:hover {
+  transform: translateY(-8px) rotateX(2deg);
+  box-shadow: 
+    0 25px 50px -12px rgba(15, 44, 76, 0.15),
+    0 0 0 1px rgba(30, 115, 217, 0.05);
+}
+
+.card-lift {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-lift:hover {
+  transform: translateY(-6px) scale(1.01);
+}
+
+/* ========================================
+   BUTTON EFFECTS
+   ======================================== */
+
 .btn-primary {
   background: linear-gradient(135deg, #1E73D9 0%, #0F2C4C 100%);
   transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.btn-primary:hover::before {
+  left: 100%;
 }
 
 .btn-primary:hover {
   background: linear-gradient(135deg, #0F2C4C 0%, #1E73D9 100%);
   transform: translateY(-2px);
-  box-shadow: 0 10px 20px rgba(30, 115, 217, 0.3);
+  box-shadow: 0 10px 30px rgba(30, 115, 217, 0.35);
 }
 
-/* Loading skeleton */
-@keyframes shimmer {
-  0% {
-    background-position: -1000px 0;
-  }
-  100% {
-    background-position: 1000px 0;
-  }
+.btn-gold {
+  background: linear-gradient(135deg, #D4AF37 0%, #F4E4BC 50%, #D4AF37 100%);
+  color: #0F2C4C;
+  transition: all 0.3s ease;
 }
+
+.btn-gold:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(212, 175, 55, 0.35);
+}
+
+.btn-outline-premium {
+  border: 2px solid transparent;
+  background: linear-gradient(white, white) padding-box,
+              linear-gradient(135deg, #1E73D9, #0F2C4C) border-box;
+  transition: all 0.3s ease;
+}
+
+.btn-outline-premium:hover {
+  background: linear-gradient(135deg, #1E73D9 0%, #0F2C4C 100%);
+  color: white;
+  transform: translateY(-2px);
+}
+
+/* ========================================
+   BORDER & DIVIDER EFFECTS
+   ======================================== */
+
+.border-gradient {
+  border: 2px solid transparent;
+  background: linear-gradient(white, white) padding-box,
+              linear-gradient(135deg, #1E73D9, #0F2C4C) border-box;
+}
+
+.border-gradient-gold {
+  border: 2px solid transparent;
+  background: linear-gradient(white, white) padding-box,
+              linear-gradient(135deg, #D4AF37, #F4E4BC, #D4AF37) border-box;
+}
+
+.divider-gradient {
+  height: 4px;
+  background: linear-gradient(90deg, transparent, #1E73D9, #0F2C4C, #1E73D9, transparent);
+  border-radius: 2px;
+}
+
+.divider-gold {
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #D4AF37, #F4E4BC, #D4AF37, transparent);
+  border-radius: 2px;
+}
+
+/* ========================================
+   TEXT EFFECTS
+   ======================================== */
+
+.text-shadow-sm {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.text-shadow {
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.text-shadow-lg {
+  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.text-shadow-hero {
+  text-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.3),
+    0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* ========================================
+   ICON CONTAINERS
+   ======================================== */
+
+.icon-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.icon-container-primary {
+  background: linear-gradient(135deg, #1E73D9 0%, #0F2C4C 100%);
+  box-shadow: 0 8px 24px rgba(30, 115, 217, 0.3);
+}
+
+.icon-container-primary:hover {
+  transform: scale(1.1) rotate(5deg);
+  box-shadow: 0 12px 32px rgba(30, 115, 217, 0.4);
+}
+
+.icon-container-gold {
+  background: linear-gradient(135deg, #D4AF37 0%, #F4E4BC 50%, #D4AF37 100%);
+  box-shadow: 0 8px 24px rgba(212, 175, 55, 0.3);
+}
+
+.icon-container-glass {
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 24px rgba(15, 44, 76, 0.1);
+}
+
+/* ========================================
+   DECORATIVE ELEMENTS
+   ======================================== */
+
+.dot-pattern {
+  background-image: radial-gradient(rgba(30, 115, 217, 0.15) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.line-pattern {
+  background-image: 
+    linear-gradient(90deg, rgba(30, 115, 217, 0.05) 1px, transparent 1px),
+    linear-gradient(rgba(30, 115, 217, 0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Wave shape for section dividers */
+.wave-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.wave-top svg {
+  position: relative;
+  display: block;
+  width: calc(100% + 1.3px);
+  height: 60px;
+}
+
+/* ========================================
+   SKELETON LOADING
+   ======================================== */
 
 .skeleton {
   background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
   background-size: 1000px 100%;
   animation: shimmer 2s infinite;
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+
+.backdrop-blur-xs {
+  backdrop-filter: blur(2px);
+}
+
+.backdrop-blur-md {
+  backdrop-filter: blur(12px);
+}
+
+.transition-premium {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+}
+
+.hover-scale:hover {
+  transform: scale(1.05);
+}
+
+.hover-glow:hover {
+  box-shadow: 0 0 30px rgba(30, 115, 217, 0.3);
 }

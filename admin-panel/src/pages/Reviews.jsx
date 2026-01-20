@@ -30,7 +30,7 @@ const Reviews = () => {
   const { markReviewsAsSeen, notificationItems, markAsRead } = useNotifications();
 
   // Track last fetch time to prevent excessive calls
-  const lastFetchRef = useRef(Date.now());
+  const lastFetchRef = useRef(0);
   const MIN_FETCH_INTERVAL = 30000; // 30 seconds minimum between fetches
 
   const fetchReviews = useCallback(async () => {
@@ -69,7 +69,7 @@ const Reviews = () => {
   useEffect(() => {
     const now = Date.now();
     const timeSinceLastFetch = now - lastFetchRef.current;
-    
+
     // Only fetch if enough time has passed since last fetch
     if (timeSinceLastFetch >= MIN_FETCH_INTERVAL) {
       fetchReviews();
@@ -146,16 +146,16 @@ const Reviews = () => {
     try {
       await reviewService.approveReview(reviewId, isApproved);
       toast.success(`Review ${isApproved ? 'approved' : 'rejected'} successfully`);
-      
+
       // Optimize: Update local state instead of full refetch
-      setReviews(prevReviews => 
-        prevReviews.map(review => 
-          review._id === reviewId 
-            ? { ...review, isApproved, isActive: isApproved } 
+      setReviews(prevReviews =>
+        prevReviews.map(review =>
+          review._id === reviewId
+            ? { ...review, isApproved, isActive: isApproved }
             : review
         )
       );
-      
+
       // Update selected review if modal is open
       if (selectedReview?._id === reviewId) {
         setSelectedReview(prev => ({ ...prev, isApproved, isActive: isApproved }));
@@ -175,11 +175,11 @@ const Reviews = () => {
     try {
       await reviewService.deleteReview(reviewId);
       toast.success('Review deleted successfully');
-      
+
       // Optimize: Remove from local state instead of full refetch
       setReviews(prevReviews => prevReviews.filter(review => review._id !== reviewId));
       setTotalItems(prev => Math.max(0, prev - 1));
-      
+
       // Close modal if deleted review was selected
       if (selectedReview?._id === reviewId) {
         setIsModalOpen(false);

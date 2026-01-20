@@ -9,7 +9,7 @@ const Loader = ({ size = 'md', fullScreen = false }) => {
 
   const loaderContent = (
     <motion.div
-      className={`${sizeClasses[size]} border-lavender-500 border-t-transparent rounded-full`}
+      className={`${sizeClasses[size]} border-primary border-t-transparent rounded-full`}
       animate={{ rotate: 360 }}
       transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
     />

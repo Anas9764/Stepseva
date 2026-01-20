@@ -37,11 +37,11 @@ const Home = () => {
       console.log('📦 Banners extracted:', banners);
       console.log('📦 Banners type:', typeof banners);
       console.log('📦 Is array?', Array.isArray(banners));
-      
+
       // Ensure banners is an array
       const bannersArray = Array.isArray(banners) ? banners : [];
       console.log('📦 Banners array length:', bannersArray.length);
-      
+
       const sortedBanners = bannersArray.sort((a, b) => (a?.priority ?? 0) - (b?.priority ?? 0));
       console.log('📦 About to setHeroBanners with:', sortedBanners.length, 'items');
       setHeroBanners(sortedBanners);
@@ -82,9 +82,9 @@ const Home = () => {
       console.log('📦 Featured Products Response:', response);
       let products = Array.isArray(response?.data) ? response.data : [];
       console.log('📦 Featured Products array length:', products.length);
-      
+
       const featuredIds = new Set(products.map(p => p._id));
-      
+
       if (products.length > 0 && products.length < 8) {
         const regularResponse = await productService.getAllProducts({ limit: 16 });
         console.log('📦 Regular Products Response:', regularResponse);
@@ -98,7 +98,7 @@ const Home = () => {
       } else {
         products = products.slice(0, 8);
       }
-      
+
       const uniqueProducts = [];
       const seenIds = new Set();
       for (const product of products) {
@@ -107,7 +107,7 @@ const Home = () => {
           uniqueProducts.push(product);
         }
       }
-      
+
       console.log('📦 Final featured products to set:', uniqueProducts.length);
       const finalProducts = uniqueProducts.slice(0, 8);
       console.log('📦 About to setFeaturedProducts with:', finalProducts.length, 'items');
@@ -146,7 +146,7 @@ const Home = () => {
       const byName = new Map(categoriesArray.map((cat) => [cat?.name, cat]));
       const preferred = preferredOrder.map((name) => byName.get(name)).filter(Boolean);
       const rest = categoriesArray.filter((cat) => !preferredOrder.includes(cat?.name));
-      
+
       // Only apply reordering if we have preferred categories, otherwise use original order
       // This ensures new categories created from admin panel appear in the list
       const ordered = preferred.length > 0 ? [...preferred, ...rest] : categoriesArray;
@@ -226,7 +226,10 @@ const Home = () => {
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="relative grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Connecting line for desktop */}
+            <div className="hidden lg:block absolute top-16 left-1/8 right-1/8 h-0.5 bg-gradient-to-r from-primary/20 via-primary/40 to-primary/20" style={{ left: '12%', right: '12%' }} />
+
             {howItWorks.map((step, index) => {
               const Icon = step.icon;
               return (
@@ -234,18 +237,20 @@ const Home = () => {
                   key={step.title}
                   initial={{ opacity: 0, y: 24 }}
                   whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.08 }}
-                  className="bg-gradient-to-b from-white to-sky/30 border border-gray-100 rounded-2xl p-6 shadow-md hover:shadow-xl transition-all"
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                  className="relative group bg-gradient-to-b from-white to-sky/30 border border-gray-100 rounded-2xl p-6 shadow-md hover:shadow-strong hover:-translate-y-2 transition-all duration-300"
                 >
                   <div className="flex items-center justify-between mb-4">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-primary to-secondary text-white flex items-center justify-center">
-                      <Icon size={22} />
+                    <div className="relative w-14 h-14 rounded-xl bg-gradient-to-br from-primary to-secondary text-white flex items-center justify-center shadow-md group-hover:scale-110 group-hover:shadow-glow-primary transition-all duration-300">
+                      <Icon size={24} />
+                      {/* Pulse ring on hover */}
+                      <div className="absolute inset-0 rounded-xl bg-primary/20 animate-pulse-ring opacity-0 group-hover:opacity-100" />
                     </div>
-                    <div className="text-xs font-bold text-primary/80 bg-primary/10 px-3 py-1 rounded-full">
+                    <div className="text-xs font-bold text-white bg-gradient-to-r from-primary to-secondary px-3 py-1.5 rounded-full shadow-sm">
                       Step {index + 1}
                     </div>
                   </div>
-                  <h3 className="text-lg font-semibold text-secondary mb-2">{step.title}</h3>
+                  <h3 className="text-lg font-semibold text-secondary mb-2 group-hover:text-primary transition-colors">{step.title}</h3>
                   <p className="text-sm text-gray-600 leading-relaxed">{step.description}</p>
                 </motion.div>
               );
@@ -255,26 +260,31 @@ const Home = () => {
       </section>
 
       {/* B2B Benefits Section */}
-      <section className="bg-gradient-to-b from-white to-sky/30 py-20 px-4">
-        <div className="container mx-auto">
+      <section className="relative overflow-hidden py-20 px-4">
+        {/* Premium background */}
+        <div className="absolute inset-0 bg-gradient-to-b from-white via-sky/30 to-white" />
+        <div className="absolute top-0 left-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-gold/5 rounded-full blur-3xl translate-x-1/2 translate-y-1/2" />
+
+        <div className="container mx-auto relative z-10">
           <motion.div
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             transition={{ duration: 0.6 }}
-            className="text-center mb-12"
+            className="text-center mb-14"
           >
-            <p className="uppercase tracking-[0.5em] text-primary text-sm mb-2">
-              Why Choose StepSeva B2B
-            </p>
-            <h2 className="text-4xl font-heading font-bold text-secondary mb-4">
+            <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-semibold mb-4">
+              Why Choose Us
+            </span>
+            <h2 className="text-4xl md:text-5xl font-heading font-bold text-secondary mb-4">
               Built for Business Success
             </h2>
-            <p className="text-gray-600 max-w-3xl mx-auto">
+            <p className="text-gray-600 max-w-3xl mx-auto text-lg">
               Everything you need to grow your footwear business with competitive pricing, flexible terms, and reliable supply.
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {b2bBenefits.map((benefit, index) => {
               const Icon = benefit.icon;
               return (
@@ -282,14 +292,17 @@ const Home = () => {
                   key={benefit.title}
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: index * 0.1 }}
-                  className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all border border-gray-100 group"
+                  transition={{ duration: 0.5, delay: index * 0.12 }}
+                  className="group relative bg-white/80 backdrop-blur-sm rounded-3xl p-8 shadow-medium hover:shadow-strong transition-all duration-500 border border-gray-100 hover:border-primary/20 hover:-translate-y-2"
                 >
-                  <div className={`w-14 h-14 rounded-xl bg-gradient-to-r ${benefit.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                    <Icon className="text-white" size={24} />
+                  {/* Decorative corner */}
+                  <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-primary/5 to-transparent rounded-bl-3xl rounded-tr-3xl" />
+
+                  <div className={`relative w-16 h-16 rounded-2xl bg-gradient-to-br ${benefit.color} flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
+                    <Icon className="text-white" size={28} />
                   </div>
-                  <h3 className="text-xl font-semibold text-secondary mb-2">{benefit.title}</h3>
-                  <p className="text-gray-600 text-sm leading-relaxed">{benefit.description}</p>
+                  <h3 className="text-xl font-semibold text-secondary mb-3 group-hover:text-primary transition-colors">{benefit.title}</h3>
+                  <p className="text-gray-600 leading-relaxed">{benefit.description}</p>
                 </motion.div>
               );
             })}
@@ -303,12 +316,15 @@ const Home = () => {
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-12"
+          className="text-center mb-14"
         >
-          <h2 className="text-4xl font-heading font-bold text-secondary mb-4">
+          <span className="inline-block px-4 py-1.5 rounded-full bg-secondary/10 text-secondary text-sm font-semibold mb-4">
+            Our Collection
+          </span>
+          <h2 className="text-4xl md:text-5xl font-heading font-bold text-secondary mb-4">
             Product Categories
           </h2>
-          <p className="text-gray-600 max-w-2xl mx-auto">
+          <p className="text-gray-600 max-w-2xl mx-auto text-lg">
             Explore our comprehensive range of footwear categories for your business
           </p>
         </motion.div>
@@ -341,48 +357,48 @@ const Home = () => {
                   return null;
                 }
                 return (
-              <motion.div
-                key={category._id || category.name}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: index * 0.1 }}
-                className="group relative h-[400px] rounded-2xl overflow-hidden cursor-pointer shadow-xl hover:shadow-2xl transition-all duration-500"
-              >
-                <img
-                  src={category.image || HOME_CONTENT.fallbackCategories?.[0]?.image}
-                  alt={category.name}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent"></div>
-                <div className="absolute inset-0 flex flex-col justify-end p-8">
                   <motion.div
-                    initial={{ opacity: 0, y: 20 }}
+                    key={category._id || category.name}
+                    initial={{ opacity: 0, y: 30 }}
                     whileInView={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
+                    transition={{ duration: 0.6, delay: index * 0.1 }}
+                    className="group relative h-[400px] rounded-2xl overflow-hidden cursor-pointer shadow-xl hover:shadow-2xl transition-all duration-500"
                   >
-                    <h3 className="text-3xl md:text-4xl font-heading font-bold text-white mb-3 group-hover:text-accent transition-colors">
-                    {category.name}
-                  </h3>
-                    <p className="text-white/90 mb-6 text-sm md:text-base leading-relaxed">{category.description}</p>
-                  <Link
-                    to={`/shop?category=${category.name}`}
-                      className="inline-flex items-center space-x-2 bg-white/20 backdrop-blur-sm text-white px-6 py-3 rounded-full font-semibold hover:bg-white hover:text-secondary transition-all duration-300 group-hover:scale-105 border border-white/30"
-                  >
-                      <span>Browse Category</span>
-                      <FiArrowRight className="group-hover:translate-x-1 transition-transform" />
-                  </Link>
+                    <img
+                      src={category.image || HOME_CONTENT.fallbackCategories?.[0]?.image}
+                      alt={category.name}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent"></div>
+                    <div className="absolute inset-0 flex flex-col justify-end p-8">
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                      >
+                        <h3 className="text-3xl md:text-4xl font-heading font-bold text-white mb-3 group-hover:text-accent transition-colors">
+                          {category.name}
+                        </h3>
+                        <p className="text-white/90 mb-6 text-sm md:text-base leading-relaxed">{category.description}</p>
+                        <Link
+                          to={`/shop?category=${category.name}`}
+                          className="inline-flex items-center space-x-2 bg-white/20 backdrop-blur-sm text-white px-6 py-3 rounded-full font-semibold hover:bg-white hover:text-secondary transition-all duration-300 group-hover:scale-105 border border-white/30"
+                        >
+                          <span>Browse Category</span>
+                          <FiArrowRight className="group-hover:translate-x-1 transition-transform" />
+                        </Link>
+                      </motion.div>
+                    </div>
                   </motion.div>
-                </div>
-              </motion.div>
-            );
-            });
+                );
+              });
             })()
           ) : (
             <div className="col-span-4 text-center py-12">
               <p className="text-gray-500">No categories available</p>
               <p className="text-sm text-gray-400 mt-2">
-                Debug: Loading={categoriesLoading ? 'Yes' : 'No'}, 
-                Count={categories?.length || 0}, 
+                Debug: Loading={categoriesLoading ? 'Yes' : 'No'},
+                Count={categories?.length || 0},
                 IsArray={Array.isArray(categories) ? 'Yes' : 'No'}
               </p>
             </div>
@@ -391,29 +407,38 @@ const Home = () => {
       </section>
 
       {/* Mid-page Promo Banner */}
-      <section className="px-4 pb-6">
+      <section className="px-4 pb-8">
         <div className="container mx-auto">
-          <div className="rounded-3xl overflow-hidden border border-gray-100 shadow-xl bg-gradient-to-r from-secondary via-primary to-secondary">
-            <div className="p-8 md:p-12 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+          <div className="relative rounded-3xl overflow-hidden shadow-strong">
+            {/* Background */}
+            <div className="absolute inset-0 bg-gradient-to-r from-secondary via-primary to-secondary" />
+            <div className="absolute inset-0 overflow-hidden">
+              <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full blur-3xl translate-x-1/2 -translate-y-1/2" />
+              <div className="absolute bottom-0 left-0 w-64 h-64 bg-gold/10 rounded-full blur-3xl -translate-x-1/2 translate-y-1/2" />
+            </div>
+
+            <div className="relative p-8 md:p-14 flex flex-col md:flex-row md:items-center md:justify-between gap-8">
               <div className="text-white">
-                <p className="text-white/80 text-sm font-semibold uppercase tracking-widest">Wholesale Advantage</p>
-                <h3 className="text-3xl md:text-4xl font-heading font-bold mt-2">
+                <span className="inline-block px-3 py-1 rounded-full bg-white/10 text-white/90 text-sm font-semibold mb-4 backdrop-blur-sm border border-white/20">
+                  ✨ Wholesale Advantage
+                </span>
+                <h3 className="text-3xl md:text-4xl lg:text-5xl font-heading font-bold text-shadow-hero">
                   Get quotes tailored to your MOQ
                 </h3>
-                <p className="text-white/90 mt-3 max-w-2xl">
-                  Share your required quantity and delivery city. We’ll respond with best pricing, lead time, and payment terms.
+                <p className="text-white/80 mt-4 max-w-2xl text-lg">
+                  Share your required quantity and delivery city. We'll respond with best pricing, lead time, and payment terms.
                 </p>
               </div>
-              <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex flex-col sm:flex-row gap-4">
                 <Link
                   to="/shop"
-                  className="bg-white text-secondary px-7 py-3.5 rounded-full font-bold shadow-lg hover:shadow-2xl transition-all text-center"
+                  className="bg-white text-secondary px-8 py-4 rounded-full font-bold shadow-strong hover:shadow-glow-primary hover:-translate-y-1 transition-all text-center"
                 >
                   Browse Catalog
                 </Link>
                 <button
                   onClick={handleGetStarted}
-                  className="bg-white/10 text-white px-7 py-3.5 rounded-full font-semibold border border-white/25 hover:bg-white/20 transition-all"
+                  className="bg-white/10 backdrop-blur-sm text-white px-8 py-4 rounded-full font-semibold border border-white/25 hover:bg-white/20 transition-all"
                 >
                   {account ? 'Go to Shop' : isAuthenticated ? 'Setup Business Account' : 'Create Account'}
                 </button>
@@ -424,39 +449,46 @@ const Home = () => {
       </section>
 
       {/* Featured Products */}
-      <section className="container mx-auto px-4 py-20 bg-gradient-to-b from-transparent to-sky/30">
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-12"
-        >
-          <h2 className="text-4xl font-heading font-bold text-secondary mb-4">
-            Featured Products
-          </h2>
-          <p className="text-gray-600 max-w-2xl mx-auto">
-            Best-selling products with volume pricing and bulk discounts
-          </p>
-        </motion.div>
+      <section className="relative py-20 px-4">
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-sky/20 to-transparent" />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {loading
-            ? Array(8)
+        <div className="container mx-auto relative z-10">
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-14"
+          >
+            <span className="inline-block px-4 py-1.5 rounded-full bg-gold/10 text-gold text-sm font-semibold mb-4">
+              Top Sellers
+            </span>
+            <h2 className="text-4xl md:text-5xl font-heading font-bold text-secondary mb-4">
+              Featured Products
+            </h2>
+            <p className="text-gray-600 max-w-2xl mx-auto text-lg">
+              Best-selling products with volume pricing and bulk discounts
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {loading
+              ? Array(8)
                 .fill(0)
                 .map((_, i) => <SkeletonCard key={`skeleton-${i}`} />)
-            : featuredProducts.slice(0, 8).map((product, index) => (
+              : featuredProducts.slice(0, 8).map((product, index) => (
                 <ProductCard key={`featured-${product._id}-${index}`} product={product} showActions={false} />
               ))}
-        </div>
+          </div>
 
-        <div className="text-center">
-          <Link
-            to="/shop"
-            className="inline-flex items-center space-x-2 text-primary hover:text-secondary transition-colors font-semibold text-lg"
-          >
-            <span>View All Products</span>
-            <FiArrowRight />
-          </Link>
+          <div className="text-center">
+            <Link
+              to="/shop"
+              className="inline-flex items-center space-x-2 text-primary hover:text-secondary transition-colors font-semibold text-lg"
+            >
+              <span>View All Products</span>
+              <FiArrowRight />
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -467,15 +499,15 @@ const Home = () => {
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             transition={{ duration: 0.6 }}
-            className="text-center mb-12"
+            className="text-center mb-14"
           >
-            <p className="uppercase tracking-[0.5em] text-primary text-sm mb-2">
+            <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-semibold mb-4">
               Trusted by Businesses
-            </p>
-            <h2 className="text-4xl font-heading font-bold text-secondary mb-4">
+            </span>
+            <h2 className="text-4xl md:text-5xl font-heading font-bold text-secondary mb-4">
               What Buyers Say
             </h2>
-            <p className="text-gray-600 max-w-3xl mx-auto">
+            <p className="text-gray-600 max-w-3xl mx-auto text-lg">
               A professional procurement experience designed for retailers, wholesalers, and business customers.
             </p>
           </motion.div>
@@ -572,7 +604,7 @@ const Home = () => {
                   >
                     Create Business Account
                   </Link>
-              <Link
+                  <Link
                     to="/login"
                     className="bg-white/10 backdrop-blur-sm text-white px-8 py-4 rounded-full font-semibold text-lg border-2 border-white/30 hover:bg-white/20 transition-all"
                   >
@@ -585,7 +617,7 @@ const Home = () => {
                   className="bg-white text-primary px-8 py-4 rounded-full font-bold text-lg hover:shadow-2xl transition-all transform hover:scale-105"
                 >
                   Setup Your Business Account
-              </Link>
+                </Link>
               ) : (
                 <Link
                   to="/shop"

@@ -30,7 +30,7 @@ const Questions = () => {
   const { markQuestionsAsSeen, notificationItems, markAsRead } = useNotifications();
 
   // Track last fetch time to prevent excessive calls
-  const lastFetchRef = useRef(Date.now());
+  const lastFetchRef = useRef(0);
   const MIN_FETCH_INTERVAL = 30000; // 30 seconds minimum between fetches
 
   const fetchQuestions = useCallback(async () => {
@@ -69,7 +69,7 @@ const Questions = () => {
   useEffect(() => {
     const now = Date.now();
     const timeSinceLastFetch = now - lastFetchRef.current;
-    
+
     // Only fetch if enough time has passed since last fetch
     if (timeSinceLastFetch >= MIN_FETCH_INTERVAL) {
       fetchQuestions();
@@ -144,11 +144,11 @@ const Questions = () => {
     try {
       await questionService.deleteQuestion(questionId);
       toast.success('Question deleted successfully');
-      
+
       // Optimize: Remove from local state instead of full refetch
       setQuestions(prevQuestions => prevQuestions.filter(q => q._id !== questionId));
       setTotalItems(prev => Math.max(0, prev - 1));
-      
+
       // Close modal if deleted question was selected
       if (selectedQuestion?._id === questionId) {
         setIsModalOpen(false);
@@ -169,7 +169,7 @@ const Questions = () => {
     try {
       await questionService.deleteAnswer(questionId, answerId);
       toast.success('Answer deleted successfully');
-      
+
       // Optimize: Update local state instead of full refetch
       if (selectedQuestion?._id === questionId) {
         // Update selected question in modal
@@ -181,10 +181,10 @@ const Questions = () => {
           };
         });
       }
-      
+
       // Update question in the list
-      setQuestions(prev => prev.map(q => 
-        q._id === questionId 
+      setQuestions(prev => prev.map(q =>
+        q._id === questionId
           ? { ...q, answers: (q.answers || []).filter(a => a._id !== answerId) }
           : q
       ));
@@ -212,12 +212,12 @@ const Questions = () => {
       const response = await questionService.answerQuestion(selectedQuestion._id, answerText);
       toast.success('Answer submitted successfully');
       setAnswerText('');
-      
+
       // Optimize: Update local state instead of refetching all questions
       if (response.success && response.data) {
         // Get the new answer from response
         const newAnswer = response.data.answers?.[response.data.answers.length - 1];
-        
+
         if (newAnswer) {
           // Update selected question with new answer
           setSelectedQuestion(prev => {
@@ -227,10 +227,10 @@ const Questions = () => {
               answers: [...(prev.answers || []), newAnswer]
             };
           });
-          
+
           // Update question in the list
-          setQuestions(prev => prev.map(q => 
-            q._id === selectedQuestion._id 
+          setQuestions(prev => prev.map(q =>
+            q._id === selectedQuestion._id
               ? { ...q, answers: [...(q.answers || []), newAnswer] }
               : q
           ));
@@ -506,11 +506,10 @@ const Questions = () => {
                     .map((answer) => (
                       <div
                         key={answer._id}
-                        className={`p-4 rounded-lg border ${
-                          answer.isAdmin
+                        className={`p-4 rounded-lg border ${answer.isAdmin
                             ? 'bg-blue-50 border-blue-200'
                             : 'bg-gray-50 border-gray-200'
-                        }`}
+                          }`}
                       >
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex items-center gap-2">
