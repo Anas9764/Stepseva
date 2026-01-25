@@ -54,8 +54,8 @@ const ProductDetails = () => {
   const { openDrawer: openRfqDrawer } = useRfq();
 
   // Supplier contact info (should come from settings/product)
-  const supplierPhone = '+91-8261029700';
-  const supplierWhatsApp = '918261029700';
+  const supplierPhone = '+91-9764319087';
+  const supplierWhatsApp = '919764319087';
   const [similarProducts, setSimilarProducts] = useState([]);
   const [relatedCategories, setRelatedCategories] = useState([]);
 

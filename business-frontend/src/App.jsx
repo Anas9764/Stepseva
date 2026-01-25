@@ -10,6 +10,7 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import ScrollToTop from './components/ScrollToTop';
 import RfqDrawer from './components/RfqDrawer';
+import FloatingActionButtons from './components/FloatingActionButtons';
 import BusinessDashboard from './pages/BusinessDashboard';
 import BusinessAccountSetup from './pages/BusinessAccountSetup';
 import Home from './pages/Home';
@@ -94,6 +95,8 @@ function App() {
             <Footer />
             {/* Global RFQ Drawer */}
             <RfqDrawerWrapper />
+            {/* Global Floating Action Buttons (WhatsApp + Scroll to Top) */}
+            <FloatingActionButtons />
           </div>
         </Router>
       </RfqProvider>

@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState } from 'react';
+import { useSelector } from 'react-redux';
 
 const RfqContext = createContext();
 
@@ -12,52 +13,17 @@ export const useRfq = () => {
 
 export const RfqProvider = ({ children }) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [rfqCount, setRfqCount] = useState(0);
 
-  // Read RFQ count from localStorage
-  const updateRfqCount = () => {
-    try {
-      const raw = localStorage.getItem('rfqDraftItems');
-      const items = raw ? JSON.parse(raw) : [];
-      setRfqCount(Array.isArray(items) ? items.length : 0);
-    } catch {
-      setRfqCount(0);
-    }
-  };
-
-  // Update count when drawer opens/closes or when storage changes
-  useEffect(() => {
-    updateRfqCount();
-    
-    // Listen for storage changes (when RFQ is updated from other tabs/components)
-    const handleStorageChange = () => {
-      updateRfqCount();
-    };
-    
-    window.addEventListener('storage', handleStorageChange);
-    
-    // Also listen for custom events (same tab updates)
-    window.addEventListener('rfqUpdated', handleStorageChange);
-    
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('rfqUpdated', handleStorageChange);
-    };
-  }, [isDrawerOpen]);
-
-  // Poll for changes (in case localStorage is updated directly)
-  useEffect(() => {
-    const interval = setInterval(updateRfqCount, 1000);
-    return () => clearInterval(interval);
-  }, []);
+  // Get RFQ count directly from Redux store
+  const rfqItems = useSelector((state) => state.rfq.items);
+  const rfqCount = rfqItems.length;
 
   const openDrawer = () => setIsDrawerOpen(true);
   const closeDrawer = () => setIsDrawerOpen(false);
 
   return (
-    <RfqContext.Provider value={{ isDrawerOpen, openDrawer, closeDrawer, rfqCount, updateRfqCount }}>
+    <RfqContext.Provider value={{ isDrawerOpen, openDrawer, closeDrawer, rfqCount }}>
       {children}
     </RfqContext.Provider>
   );
 };
-

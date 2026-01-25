@@ -1,13 +1,11 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiSearch, FiFilter, FiX, FiChevronDown, FiGrid, FiSliders, FiCheckSquare, FiSquare, FiSend } from 'react-icons/fi';
+import { FiSearch, FiFilter, FiX, FiChevronDown, FiGrid, FiSliders } from 'react-icons/fi';
 import { productService } from '../services/productService';
 import { categoryService } from '../services/categoryService';
 import ProductCard from '../components/ProductCard';
 import ProductListItem from '../components/ProductListItem';
-import BulkInquiryModal from '../components/BulkInquiryModal';
-import RFQFloatingButton from '../components/RFQFloatingButton';
 import { SkeletonCard } from '../components/Loader';
 import Pagination from '../components/Pagination';
 import { useDebounce } from '../hooks/useDebounce';
@@ -38,10 +36,6 @@ const Shop = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState(searchParams.get('sort') || 'relevance');
   const [view, setView] = useState(searchParams.get('view') || 'grid');
-  const [selectionMode, setSelectionMode] = useState(false);
-  const [selectedIds, setSelectedIds] = useState(() => new Set());
-  const [selectedProductsMap, setSelectedProductsMap] = useState(() => new Map()); // Store full product objects
-  const [showBulkInquiry, setShowBulkInquiry] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
     category: true,
     size: true,
@@ -194,48 +188,6 @@ const Shop = () => {
     }
     return chips;
   }, [filters]);
-
-  const selectedProducts = useMemo(() => {
-    if (selectedProductsMap.size === 0) return [];
-    return Array.from(selectedProductsMap.values());
-  }, [selectedProductsMap]);
-
-  const toggleSelectId = (product) => {
-    const productId = product._id;
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(productId)) {
-        next.delete(productId);
-      } else {
-        next.add(productId);
-      }
-      return next;
-    });
-
-    // Store/remove full product object
-    setSelectedProductsMap((prev) => {
-      const next = new Map(prev);
-      if (next.has(productId)) {
-        next.delete(productId);
-      } else {
-        // Store minimal product data needed for RFQ
-        next.set(productId, {
-          _id: product._id,
-          name: product.name,
-          moq: product.moq || 1,
-          price: product.price,
-          image: product.images?.[0] || product.image,
-        });
-      }
-      return next;
-    });
-  };
-
-  const clearSelection = () => {
-    setSelectedIds(new Set());
-    setSelectedProductsMap(new Map());
-    setSelectionMode(false);
-  };
 
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({
@@ -1012,22 +964,8 @@ const Shop = () => {
                     </button>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectionMode((v) => !v);
-                      setSelectedIds(new Set());
-                    }}
-                    className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-semibold transition-colors w-fit ${selectionMode
-                      ? 'border-primary bg-primary text-white'
-                      : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-                      }`}
-                  >
-                    {selectionMode ? <FiCheckSquare /> : <FiSquare />}
-                    Select
-                  </button>
-
                   {activeFiltersCount > 0 && (
+
                     <div className="flex flex-wrap items-center gap-2">
                       {activeChips.map((chip) => (
                         <button
@@ -1091,29 +1029,7 @@ const Shop = () => {
                 {view === 'list' ? (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
                     {allProducts.map((product) => (
-                      <div key={product._id} className="relative">
-                        {selectionMode && (
-                          <button
-                            type="button"
-                            onClick={() => toggleSelectId(product)}
-                            className={`absolute z-20 top-3 left-3 inline-flex items-center justify-center w-9 h-9 rounded-xl border shadow-sm transition-colors ${selectedIds.has(product._id)
-                              ? 'bg-primary text-white border-primary'
-                              : 'bg-white text-gray-700 border-gray-200 hover:border-primary/40'
-                              }`}
-                            aria-label={selectedIds.has(product._id) ? 'Deselect product' : 'Select product'}
-                          >
-                            {selectedIds.has(product._id) ? <FiCheckSquare /> : <FiSquare />}
-                          </button>
-                        )}
-                        <div
-                          className={selectionMode ? 'cursor-pointer' : ''}
-                          onClick={() => {
-                            if (selectionMode) toggleSelectId(product);
-                          }}
-                        >
-                          <ProductListItem product={product} />
-                        </div>
-                      </div>
+                      <ProductListItem key={product._id} product={product} />
                     ))}
                   </motion.div>
                 ) : (
@@ -1128,25 +1044,7 @@ const Shop = () => {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.05 }}
-                        className="relative"
                       >
-                        {selectionMode && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              toggleSelectId(product);
-                            }}
-                            className={`absolute z-40 top-3 left-3 inline-flex items-center justify-center w-10 h-10 rounded-2xl border shadow-sm transition-colors ring-4 ring-white/70 backdrop-blur ${selectedIds.has(product._id)
-                              ? 'bg-primary text-white border-primary'
-                              : 'bg-white/95 text-gray-700 border-gray-200 hover:border-primary/40'
-                              }`}
-                            aria-label={selectedIds.has(product._id) ? 'Deselect product' : 'Select product'}
-                          >
-                            {selectedIds.has(product._id) ? <FiCheckSquare /> : <FiSquare />}
-                          </button>
-                        )}
                         <ProductCard product={product} showActions={true} />
                       </motion.div>
                     ))}
@@ -1193,50 +1091,12 @@ const Shop = () => {
               </motion.div>
             )}
 
-            {/* Selection Bar */}
-            {selectionMode && selectedIds.size > 0 && (
-              <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100vw-2rem)] max-w-4xl">
-                <div className="bg-white/95 backdrop-blur-md border border-gray-200 shadow-xl rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-3">
-                  <div className="flex-1 text-sm font-semibold text-secondary">
-                    {selectedIds.size} selected
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={clearSelection}
-                      className="px-4 py-2 rounded-xl border border-gray-200 font-semibold text-sm hover:bg-gray-50"
-                    >
-                      Clear
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowBulkInquiry(true)}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm bg-gradient-to-r from-primary to-secondary text-white hover:shadow-lg"
-                    >
-                      <FiSend />
-                      Send RFQ
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>
 
-      <BulkInquiryModal
-        isOpen={showBulkInquiry}
-        onClose={() => {
-          setShowBulkInquiry(false);
-        }}
-        onSuccess={() => {
-          clearSelection();
-          setShowBulkInquiry(false);
-        }}
-        products={selectedProducts}
-      />
-
       {/* Custom Scrollbar Styles */}
+
       <style>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 8px;
@@ -1266,7 +1126,6 @@ const Shop = () => {
           background: #94a3b8;
         }
       `}</style>
-      <RFQFloatingButton />
     </div >
   );
 };

@@ -56,7 +56,7 @@ const Contact = () => {
     {
       icon: Phone,
       title: 'Call Us',
-      lines: ['+91 98765 43210', '+91 12345 67890'],
+      lines: ['+91 97643 19087'],
       gradient: 'from-primary to-secondary',
       hoverColor: 'hover:shadow-glow-primary',
     },

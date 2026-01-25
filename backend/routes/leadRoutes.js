@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const {
   createLead,
+  createBulkLead,
   getAllLeads,
   getLeadById,
   updateLead,
@@ -15,6 +16,9 @@ const { requireAuthIfB2BInquiryLocked } = require('../middleware/b2bSettingsGate
 // NOTE: `protect` is not used here because we want anonymous inquiries when toggle is off.
 router.post('/', requireAuthIfB2BInquiryLocked, createLead);
 
+// Bulk RFQ route - for submitting multiple products at once
+router.post('/bulk', requireAuthIfB2BInquiryLocked, createBulkLead);
+
 // Protected routes - Buyers can view their own inquiries
 router.get('/my-inquiries', protect, getMyInquiries);
 
@@ -25,4 +29,3 @@ router.get('/:id', protect, getLeadById);
 router.put('/:id', protect, admin, updateLead);
 
 module.exports = router;
-

@@ -7,6 +7,13 @@ export const leadService = {
     return response.data;
   },
 
+  // Create bulk leads/inquiries (Public - for RFQ with multiple products)
+  createBulkLead: async (bulkLeadData) => {
+    const response = await api.post('/leads/bulk', bulkLeadData);
+    return response.data;
+  },
+
+
   // Get buyer's own inquiries (Protected)
   getMyInquiries: async (params = {}) => {
     const response = await api.get('/leads/my-inquiries', { params });
