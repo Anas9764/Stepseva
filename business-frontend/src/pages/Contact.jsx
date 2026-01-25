@@ -85,7 +85,7 @@ const Contact = () => {
   return (
     <div className="min-h-screen overflow-hidden">
       {/* Hero Section */}
-      <section className="relative py-24 md:py-32 overflow-hidden">
+      <section className="relative py-12 md:py-32 overflow-hidden">
         {/* Background */}
         <div className="absolute inset-0 bg-gradient-to-br from-secondary via-primary/90 to-secondary" />
 
@@ -113,7 +113,7 @@ const Contact = () => {
               <span className="text-sm font-medium">We're Here to Help</span>
             </motion.div>
 
-            <h1 className="text-5xl md:text-6xl font-heading font-bold mb-6 text-shadow-hero">
+            <h1 className="text-3xl md:text-6xl font-heading font-bold mb-6 text-shadow-hero">
               Get In Touch
             </h1>
             <p className="text-xl text-white/90 leading-relaxed">

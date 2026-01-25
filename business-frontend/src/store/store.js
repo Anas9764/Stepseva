@@ -8,6 +8,7 @@ import messagesReducer from './slices/messagesSlice';
 import dashboardReducer from './slices/dashboardSlice';
 import analyticsReducer from './slices/analyticsSlice';
 import settingsReducer from './slices/settingsSlice';
+import rfqReducer from './slices/rfqSlice';
 
 export const store = configureStore({
   reducer: {
@@ -20,6 +21,7 @@ export const store = configureStore({
     dashboard: dashboardReducer,
     analytics: analyticsReducer,
     settings: settingsReducer,
+    rfq: rfqReducer,
   },
 });
 

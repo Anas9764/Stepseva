@@ -1,7 +1,8 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiDollarSign } from 'react-icons/fi';
-import { useSelector } from 'react-redux';
+import { FiDollarSign, FiEye, FiShoppingBag } from 'react-icons/fi';
+import { useSelector, useDispatch } from 'react-redux';
+import { addToRfq } from '../store/slices/rfqSlice';
 import { memo, useCallback, useMemo, useState } from 'react';
 import LazyImage from './LazyImage';
 import B2BPricingDisplay from './B2BPricingDisplay';
@@ -9,9 +10,12 @@ import InquiryForm from './InquiryForm';
 
 const ProductListItem = memo(({ product }) => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const { isAuthenticated } = useSelector((state) => state.auth);
   const { account } = useSelector((state) => state.businessAccount);
   const { data: settings } = useSelector((state) => state.settings);
+  const rfqItems = useSelector((state) => state.rfq.items);
+  const isInRfq = useMemo(() => rfqItems.some(item => item._id === product._id), [rfqItems, product._id]);
 
   const [showInquiryForm, setShowInquiryForm] = useState(false);
 
@@ -20,20 +24,16 @@ const ProductListItem = memo(({ product }) => {
     return images[0] || 'https://via.placeholder.com/600x400';
   }, [product?.images, product?.image]);
 
-  const handleGetBestPrice = useCallback(
+  const handleAddToRfq = useCallback(
     (e) => {
       e.preventDefault();
       e.stopPropagation();
 
-      const requireLoginForInquiry = Boolean(settings?.b2b?.requireLoginForInquiry);
-      if (requireLoginForInquiry && !isAuthenticated) {
-        navigate('/login', { state: { from: `/product/${product?._id}` } });
-        return;
-      }
+      if (isInRfq) return;
 
-      setShowInquiryForm(true);
+      dispatch(addToRfq(product));
     },
-    [settings, isAuthenticated, navigate, product?._id]
+    [dispatch, product, isInRfq]
   );
 
   const categoryName = typeof product?.category === 'object' ? product?.category?.name : product?.category;
@@ -130,18 +130,29 @@ const ProductListItem = memo(({ product }) => {
             </div>
 
             <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-3" onClick={(e) => e.stopPropagation()}>
-              <button
-                onClick={handleGetBestPrice}
-                disabled={product?.stock === 0}
-                className={`inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-sm w-full sm:w-auto ${
-                  product?.stock === 0
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
-                    : 'bg-gradient-to-r from-primary to-secondary text-white hover:shadow-md'
-                }`}
-              >
-                <FiDollarSign />
-                Get Best Price
-              </button>
+              <div className="grid grid-cols-2 gap-2 w-full sm:w-auto sm:flex sm:gap-3">
+                <button
+                  onClick={handleAddToRfq}
+                  disabled={product?.stock === 0 || isInRfq}
+                  className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg font-semibold text-xs transition-all shadow-sm ${product?.stock === 0
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+                      : isInRfq
+                        ? 'bg-green-500 text-white shadow-md cursor-default'
+                        : 'bg-gradient-to-r from-primary to-secondary text-white hover:shadow-md'
+                    }`}
+                >
+                  {isInRfq ? <FiShoppingBag size={14} /> : <FiDollarSign size={14} />}
+                  <span className="whitespace-nowrap">{isInRfq ? 'Added' : 'Add to RFQ'}</span>
+                </button>
+
+                <Link
+                  to={`/product/${product?._id}`}
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg font-semibold text-xs transition-all shadow-sm border border-gray-200 bg-white text-secondary hover:bg-gray-50"
+                >
+                  <FiEye size={14} />
+                  <span className="whitespace-nowrap">View Product</span>
+                </Link>
+              </div>
 
               <div className="text-xs text-gray-500 flex-1">
                 {product?.stock === 0 ? (

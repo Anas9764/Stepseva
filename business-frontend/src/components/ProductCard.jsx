@@ -1,7 +1,8 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiDollarSign, FiShoppingBag } from 'react-icons/fi';
-import { useSelector } from 'react-redux';
+import { FiDollarSign, FiShoppingBag, FiEye } from 'react-icons/fi';
+import { useSelector, useDispatch } from 'react-redux';
+import { addToRfq } from '../store/slices/rfqSlice';
 import { useState, useEffect, useRef, useMemo, memo, useCallback } from 'react';
 import LazyImage from './LazyImage';
 import B2BPricingDisplay from './B2BPricingDisplay';
@@ -9,9 +10,12 @@ import InquiryForm from './InquiryForm';
 
 const ProductCard = memo(({ product, showBuyNow = false, showActions = true }) => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const { isAuthenticated } = useSelector((state) => state.auth);
   const { account } = useSelector((state) => state.businessAccount);
   const { data: settings } = useSelector((state) => state.settings);
+  const rfqItems = useSelector((state) => state.rfq.items);
+  const isInRfq = useMemo(() => rfqItems.some(item => item._id === product._id), [rfqItems, product._id]);
 
   // Get all product images - memoized
   const productImages = useMemo(() => {
@@ -49,18 +53,17 @@ const ProductCard = memo(({ product, showBuyNow = false, showActions = true }) =
     };
   }, [isHovered, productImages.length]);
 
-  const handleGetBestPrice = useCallback((e) => {
+  const handleAddToRfq = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
 
-    const requireLoginForInquiry = Boolean(settings?.b2b?.requireLoginForInquiry);
-    if (requireLoginForInquiry && !isAuthenticated) {
-      navigate('/login', { state: { from: `/product/${product?._id}` } });
+    if (isInRfq) {
+      // Optional: Maybe remove from RFQ or just show toast?
       return;
     }
 
-    setShowInquiryForm(true);
-  }, [settings, isAuthenticated, navigate, product?._id]);
+    dispatch(addToRfq(product));
+  }, [dispatch, product, isInRfq]);
 
 
   return (
@@ -232,20 +235,29 @@ const ProductCard = memo(({ product, showBuyNow = false, showActions = true }) =
           </div>
         </Link>
 
-        {/* CTA Button - Outside Link for proper click handling */}
+        {/* CTA Buttons */}
         {showActions && (
-          <div className="px-5 pb-5">
+          <div className="px-4 pb-4 grid grid-cols-2 gap-2">
             <button
-              onClick={handleGetBestPrice}
-              disabled={product.stock === 0}
-              className={`w-full py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all duration-300 ${product.stock === 0
+              onClick={handleAddToRfq}
+              disabled={product.stock === 0 || isInRfq}
+              className={`py-2.5 px-3 rounded-lg font-semibold text-xs flex items-center justify-center gap-1.5 transition-all duration-300 ${product.stock === 0
                   ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
-                  : 'bg-gradient-to-r from-primary to-secondary text-white shadow-lg hover:shadow-xl hover:shadow-primary/25 hover:-translate-y-0.5 active:translate-y-0'
+                  : isInRfq
+                    ? 'bg-green-500 text-white shadow-md cursor-default'
+                    : 'bg-gradient-to-r from-primary to-secondary text-white shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0'
                 }`}
             >
-              <FiDollarSign size={18} />
-              <span>Get Best Price</span>
+              {isInRfq ? <FiShoppingBag size={14} /> : <FiDollarSign size={14} />}
+              <span className="whitespace-nowrap">{isInRfq ? 'Added' : 'Add to RFQ'}</span>
             </button>
+            <Link
+              to={`/product/${product._id}`}
+              className="py-2.5 px-3 rounded-lg font-semibold text-xs flex items-center justify-center gap-1.5 bg-white text-secondary border border-gray-200 hover:bg-gray-50 transition-all duration-300 shadow-sm hover:shadow-md"
+            >
+              <FiEye size={14} />
+              <span className="whitespace-nowrap">View Product</span>
+            </Link>
           </div>
         )}
       </div>

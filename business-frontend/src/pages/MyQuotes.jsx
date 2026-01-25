@@ -176,44 +176,40 @@ const MyQuotes = () => {
             </div>
 
             {/* Status Filter */}
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar-thin scroll-smooth">
               <button
                 onClick={() => handleStatusFilter('')}
-                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors ${
-                  !filters.status
+                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors whitespace-nowrap ${!filters.status
                     ? 'bg-primary text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-100'
+                  }`}
               >
                 All
               </button>
               <button
                 onClick={() => handleStatusFilter('pending')}
-                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors ${
-                  filters.status === 'pending'
+                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors whitespace-nowrap ${filters.status === 'pending'
                     ? 'bg-yellow-500 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-100'
+                  }`}
               >
                 Pending
               </button>
               <button
                 onClick={() => handleStatusFilter('accepted')}
-                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors ${
-                  filters.status === 'accepted'
+                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors whitespace-nowrap ${filters.status === 'accepted'
                     ? 'bg-green-500 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-100'
+                  }`}
               >
                 Accepted
               </button>
               <button
                 onClick={() => handleStatusFilter('rejected')}
-                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors ${
-                  filters.status === 'rejected'
+                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors whitespace-nowrap ${filters.status === 'rejected'
                     ? 'bg-red-500 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-100'
+                  }`}
               >
                 Rejected
               </button>

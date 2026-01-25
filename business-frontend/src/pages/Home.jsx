@@ -207,18 +207,18 @@ const Home = () => {
       <TrustStrip items={trustHighlights} />
 
       {/* How It Works */}
-      <section className="py-20 px-4 bg-white">
+      <section className="py-12 md:py-20 px-4 bg-white">
         <div className="container mx-auto">
           <motion.div
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             transition={{ duration: 0.6 }}
-            className="text-center mb-12"
+            className="text-center mb-8 md:mb-12"
           >
             <p className="uppercase tracking-[0.5em] text-primary text-sm mb-2">
               Simple Process
             </p>
-            <h2 className="text-4xl font-heading font-bold text-secondary mb-4">
+            <h2 className="text-3xl md:text-4xl font-heading font-bold text-secondary mb-4">
               How StepSeva B2B Works
             </h2>
             <p className="text-gray-600 max-w-3xl mx-auto">
@@ -260,7 +260,7 @@ const Home = () => {
       </section>
 
       {/* B2B Benefits Section */}
-      <section className="relative overflow-hidden py-20 px-4">
+      <section className="relative overflow-hidden py-12 md:py-20 px-4">
         {/* Premium background */}
         <div className="absolute inset-0 bg-gradient-to-b from-white via-sky/30 to-white" />
         <div className="absolute top-0 left-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
@@ -311,17 +311,17 @@ const Home = () => {
       </section>
 
       {/* Category Highlights */}
-      <section className="container mx-auto px-4 py-20">
+      <section className="container mx-auto px-4 py-12 md:py-20">
         <motion.div
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-14"
+          className="text-center mb-10 md:mb-14"
         >
           <span className="inline-block px-4 py-1.5 rounded-full bg-secondary/10 text-secondary text-sm font-semibold mb-4">
             Our Collection
           </span>
-          <h2 className="text-4xl md:text-5xl font-heading font-bold text-secondary mb-4">
+          <h2 className="text-3xl md:text-5xl font-heading font-bold text-secondary mb-4">
             Product Categories
           </h2>
           <p className="text-gray-600 max-w-2xl mx-auto text-lg">
@@ -362,7 +362,7 @@ const Home = () => {
                     initial={{ opacity: 0, y: 30 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, delay: index * 0.1 }}
-                    className="group relative h-[400px] rounded-2xl overflow-hidden cursor-pointer shadow-xl hover:shadow-2xl transition-all duration-500"
+                    className="group relative h-[300px] md:h-[400px] rounded-2xl overflow-hidden cursor-pointer shadow-xl hover:shadow-2xl transition-all duration-500"
                   >
                     <img
                       src={category.image || HOME_CONTENT.fallbackCategories?.[0]?.image}
@@ -449,7 +449,7 @@ const Home = () => {
       </section>
 
       {/* Featured Products */}
-      <section className="relative py-20 px-4">
+      <section className="relative py-12 md:py-20 px-4">
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-sky/20 to-transparent" />
 
         <div className="container mx-auto relative z-10">
@@ -493,18 +493,18 @@ const Home = () => {
       </section>
 
       {/* Social Proof */}
-      <section className="py-16 md:py-20 px-4 bg-white">
+      <section className="py-12 md:py-20 px-4 bg-white">
         <div className="container mx-auto">
           <motion.div
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             transition={{ duration: 0.6 }}
-            className="text-center mb-14"
+            className="text-center mb-8 md:mb-14"
           >
             <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-semibold mb-4">
               Trusted by Businesses
             </span>
-            <h2 className="text-4xl md:text-5xl font-heading font-bold text-secondary mb-4">
+            <h2 className="text-3xl md:text-5xl font-heading font-bold text-secondary mb-4">
               What Buyers Say
             </h2>
             <p className="text-gray-600 max-w-3xl mx-auto text-lg">
@@ -582,14 +582,14 @@ const Home = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="bg-gradient-to-r from-primary via-secondary to-primary py-20 px-4">
+      <section className="bg-gradient-to-r from-primary via-secondary to-primary py-12 md:py-20 px-4">
         <div className="container mx-auto text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <h2 className="text-4xl md:text-5xl font-heading font-bold text-white mb-6">
+            <h2 className="text-3xl md:text-5xl font-heading font-bold text-white mb-6">
               Ready to Grow Your Business?
             </h2>
             <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">

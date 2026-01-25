@@ -39,7 +39,7 @@ const About = () => {
   return (
     <div className="min-h-screen font-body overflow-hidden">
       {/* Hero Section - Premium Design */}
-      <section className="relative min-h-[600px] flex items-center justify-center overflow-hidden">
+      <section className="relative min-h-[400px] md:min-h-[600px] flex items-center justify-center overflow-hidden py-12 md:py-0">
         {/* Animated Background */}
         <div className="absolute inset-0">
           <div
@@ -80,10 +80,10 @@ const About = () => {
             <span className="text-sm font-medium text-white/90">Trusted B2B Partner Since 2020</span>
           </motion.div>
 
-          <h1 className="text-5xl md:text-7xl font-heading font-bold mb-6 tracking-tight text-shadow-hero">
+          <h1 className="text-3xl md:text-7xl font-heading font-bold mb-6 tracking-tight text-shadow-hero">
             About StepSeva <span className="gradient-text-gold">B2B</span>
           </h1>
-          <p className="text-xl md:text-2xl font-light text-white/90 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-lg md:text-2xl font-light text-white/90 max-w-3xl mx-auto leading-relaxed">
             Your Trusted Wholesale Footwear Partner — Empowering businesses with quality products and competitive pricing
           </p>
 

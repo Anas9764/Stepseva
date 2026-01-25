@@ -302,7 +302,7 @@ const ProductDetails = () => {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5 }}
           >
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-heading font-black text-white mb-4 leading-tight tracking-tight">
+            <h1 className="text-3xl md:text-5xl lg:text-6xl font-heading font-black text-white mb-4 leading-tight tracking-tight">
               {product.name}
             </h1>
             <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4">
@@ -755,7 +755,7 @@ const ProductDetails = () => {
           )
         }
       </div>
-    </div>
+    </div >
   );
 };
 

@@ -110,11 +110,11 @@ const MyOrders = () => {
       const order = orders.find(o => o._id === orderId);
       if (order && order.products && order.products.length > 0) {
         // Navigate to shop with pre-filled inquiry
-        navigate('/shop', { 
-          state: { 
-            reorder: true, 
-            orderItems: order.products 
-          } 
+        navigate('/shop', {
+          state: {
+            reorder: true,
+            orderItems: order.products
+          }
         });
         toast.success('You can now create a new inquiry for these items');
       } else {
@@ -125,8 +125,8 @@ const MyOrders = () => {
     }
   };
 
-  const filteredOrders = statusFilter === 'All' 
-    ? orders 
+  const filteredOrders = statusFilter === 'All'
+    ? orders
     : orders.filter(order => order.orderStatus === statusFilter);
 
   if (loading) {
@@ -155,17 +155,16 @@ const MyOrders = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="mb-6 flex flex-wrap gap-2"
+          className="mb-6 flex overflow-x-auto pb-2 gap-2 custom-scrollbar-thin scroll-smooth"
         >
           {['All', 'pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'].map((status) => (
             <button
               key={status}
               onClick={() => setStatusFilter(status)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all capitalize ${
-                statusFilter === status
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all capitalize whitespace-nowrap ${statusFilter === status
                   ? 'bg-gradient-to-r from-primary to-secondary text-white shadow-lg'
-                  : 'bg-white text-gray-700 hover:bg-gray-100 shadow-sm'
-              }`}
+                  : 'bg-white text-gray-700 hover:bg-gray-100 shadow-sm border border-gray-100'
+                }`}
             >
               {status}
             </button>
@@ -182,8 +181,8 @@ const MyOrders = () => {
             <FiPackage className="mx-auto text-gray-400 mb-4" size={64} />
             <h3 className="text-2xl font-bold text-gray-800 mb-2">No Orders Found</h3>
             <p className="text-gray-600 mb-6">
-              {statusFilter === 'All' 
-                ? "You haven't placed any orders yet." 
+              {statusFilter === 'All'
+                ? "You haven't placed any orders yet."
                 : `No orders with status "${statusFilter}"`}
             </p>
             <Link
@@ -308,11 +307,10 @@ const MyOrders = () => {
                       </div>
                       <div className="text-right">
                         <p className="text-sm text-gray-600 mb-1">Payment Status</p>
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          order.paymentStatus === 'paid' || order.paymentStatus === 'Paid'
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${order.paymentStatus === 'paid' || order.paymentStatus === 'Paid'
                             ? 'bg-green-100 text-green-800'
                             : 'bg-yellow-100 text-yellow-800'
-                        }`}>
+                          }`}>
                           {order.paymentStatus === 'paid' || order.paymentStatus === 'Paid' ? 'Paid' : 'Pending'}
                         </span>
                       </div>

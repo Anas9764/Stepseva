@@ -7,6 +7,7 @@ import { categoryService } from '../services/categoryService';
 import ProductCard from '../components/ProductCard';
 import ProductListItem from '../components/ProductListItem';
 import BulkInquiryModal from '../components/BulkInquiryModal';
+import RFQFloatingButton from '../components/RFQFloatingButton';
 import { SkeletonCard } from '../components/Loader';
 import Pagination from '../components/Pagination';
 import { useDebounce } from '../hooks/useDebounce';
@@ -423,22 +424,6 @@ const Shop = () => {
             </div>
           </motion.form>
 
-          {/* Mobile Filter Button */}
-          <div className="flex justify-center mt-4 lg:hidden">
-            <button
-              type="button"
-              onClick={() => setShowFilters(!showFilters)}
-              className="relative inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 text-white font-semibold hover:bg-white/20 transition-all"
-            >
-              <FiFilter size={18} />
-              <span>Filters</span>
-              {activeFiltersCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-gold text-secondary text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-md">
-                  {activeFiltersCount}
-                </span>
-              )}
-            </button>
-          </div>
         </div>
       </section>
 
@@ -1281,7 +1266,8 @@ const Shop = () => {
           background: #94a3b8;
         }
       `}</style>
-    </div>
+      <RFQFloatingButton />
+    </div >
   );
 };
 

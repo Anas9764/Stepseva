@@ -144,44 +144,40 @@ const MyInquiries = () => {
             </div>
 
             {/* Status Filter */}
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar-thin scroll-smooth">
               <button
                 onClick={() => handleStatusFilter('')}
-                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors ${
-                  !filters.status
+                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors whitespace-nowrap ${!filters.status
                     ? 'bg-primary text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-100'
+                  }`}
               >
                 All
               </button>
               <button
                 onClick={() => handleStatusFilter('new')}
-                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors ${
-                  filters.status === 'new'
+                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors whitespace-nowrap ${filters.status === 'new'
                     ? 'bg-blue-500 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-100'
+                  }`}
               >
                 New
               </button>
               <button
                 onClick={() => handleStatusFilter('quoted')}
-                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors ${
-                  filters.status === 'quoted'
+                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors whitespace-nowrap ${filters.status === 'quoted'
                     ? 'bg-green-500 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-100'
+                  }`}
               >
                 Quoted
               </button>
               <button
                 onClick={() => handleStatusFilter('closed')}
-                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors ${
-                  filters.status === 'closed'
+                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors whitespace-nowrap ${filters.status === 'closed'
                     ? 'bg-gray-500 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-100'
+                  }`}
               >
                 Closed
               </button>

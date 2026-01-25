@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiX, FiUser, FiMail, FiPhone, FiMapPin, FiBriefcase, FiShoppingCart, FiMessageSquare, FiCheckCircle } from 'react-icons/fi';
 import { leadService } from '../services/leadService';
@@ -11,10 +12,10 @@ const InquiryForm = ({ isOpen, onClose, product, defaultQuantity = null, default
   const { account } = useSelector((state) => state.businessAccount);
   const { data: settings } = useSelector((state) => state.settings);
   const navigate = useNavigate();
-  
+
   const isCallbackRequest = propInquiryType === 'request_callback' || propInquiryType === 'callback';
   const isCustomizationRequest = propInquiryType === 'customization';
-  
+
   const [formData, setFormData] = useState({
     buyerName: '',
     buyerEmail: '',
@@ -80,7 +81,7 @@ const InquiryForm = ({ isOpen, onClose, product, defaultQuantity = null, default
       navigate('/login', { state: { from: window.location.pathname } });
       return;
     }
-    
+
     // Validation - different requirements for callback vs quote vs customization
     if (isCallbackRequest) {
       // For callback, only name and phone are required
@@ -94,13 +95,13 @@ const InquiryForm = ({ isOpen, onClose, product, defaultQuantity = null, default
         toast.error('Please fill in all required fields');
         return;
       }
-      
+
       // For customization, requirements field is mandatory
       if (isCustomizationRequest && (!formData.requirements || formData.requirements.trim() === '')) {
         toast.error('Please provide customization details (size mix, colors, delivery city, timeline)');
         return;
       }
-      
+
       // Validate quantity for quote requests
       if (formData.quantityRequired < (product?.moq || 1)) {
         toast.error(`Minimum order quantity is ${product.moq || 1} units`);
@@ -121,10 +122,10 @@ const InquiryForm = ({ isOpen, onClose, product, defaultQuantity = null, default
       const leadData = {
         buyerName: (formData.buyerName || '').trim(),
         buyerPhone: (formData.buyerPhone || '').trim(),
-        buyerEmail: (!formData.buyerEmail || formData.buyerEmail.trim() === '') 
+        buyerEmail: (!formData.buyerEmail || formData.buyerEmail.trim() === '')
           ? (isCallbackRequest ? `callback_${Date.now()}@stepseva.com` : '')
           : formData.buyerEmail.trim(),
-        buyerCity: (!formData.buyerCity || formData.buyerCity.trim() === '') 
+        buyerCity: (!formData.buyerCity || formData.buyerCity.trim() === '')
           ? (isCallbackRequest ? 'Not specified' : '')
           : formData.buyerCity.trim(),
         buyerState: (formData.buyerState || '').trim() || undefined,
@@ -187,10 +188,10 @@ const InquiryForm = ({ isOpen, onClose, product, defaultQuantity = null, default
       console.log('Submitting lead data:', leadData);
 
       await leadService.createLead(leadData);
-      
+
       setSubmitted(true);
       toast.success('Your inquiry has been submitted successfully! We will contact you soon.');
-      
+
       // Close modal after 2 seconds
       setTimeout(() => {
         setSubmitted(false);
@@ -222,12 +223,12 @@ const InquiryForm = ({ isOpen, onClose, product, defaultQuantity = null, default
         message: error.response?.data?.message,
         data: error.response?.data,
       });
-      
+
       // Handle specific error cases
       if (error.response?.status === 401) {
         const errorMessage = error.response?.data?.message || 'Please login to submit an inquiry';
         toast.error(errorMessage);
-        
+
         // If explicitly requires auth, redirect to login after a delay
         if (error.response?.data?.requiresAuth) {
           setTimeout(() => {
@@ -255,353 +256,359 @@ const InquiryForm = ({ isOpen, onClose, product, defaultQuantity = null, default
 
   if (!isOpen) return null;
 
-  return (
+  const modalContent = (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
         <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.9 }}
-          className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.9, y: 20 }}
+          className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full my-auto overflow-hidden relative"
         >
           {/* Header */}
-          <div className="sticky top-0 bg-gradient-to-r from-primary to-secondary text-white p-6 rounded-t-2xl flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-heading font-bold">
-                {isCallbackRequest 
-                  ? 'Request Call Back' 
-                  : isCustomizationRequest 
-                    ? 'Request Custom Quote' 
+          <div className="sticky top-0 z-30 bg-gradient-to-r from-primary to-secondary text-white p-4 sm:p-6 flex items-center justify-between shadow-md">
+            <div className="pr-8">
+              <h2 className="text-xl sm:text-2xl font-heading font-bold leading-tight">
+                {isCallbackRequest
+                  ? 'Request Call Back'
+                  : isCustomizationRequest
+                    ? 'Request Custom Quote'
                     : 'Get Best Price'}
               </h2>
-              <p className="text-sm text-white/90 mt-1">
+              <p className="text-xs sm:text-sm text-white/90 mt-1 line-clamp-1">
                 {product?.name || 'Product Inquiry'}
               </p>
             </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-white/20 rounded-full transition-colors"
+              className="absolute right-4 top-4 sm:static p-2 hover:bg-white/20 rounded-full transition-colors flex-shrink-0"
+              aria-label="Close modal"
             >
               <FiX size={24} />
             </button>
           </div>
 
-          {/* Success Message */}
-          {submitted ? (
-            <div className="p-12 text-center">
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="inline-block mb-4"
-              >
-                <FiCheckCircle size={64} className="text-green-500 mx-auto" />
-              </motion.div>
-              <h3 className="text-2xl font-heading font-bold text-secondary mb-2">
-                Inquiry Submitted!
-              </h3>
-              <p className="text-gray-600">
-                We have received your inquiry and will contact you shortly.
-              </p>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="p-6 space-y-6">
-              {/* Product Info */}
-              {product && (
-                <div className="bg-sky/30 rounded-lg p-4 flex items-center gap-4">
-                  {product.image && (
-                    <img
-                      src={product.image}
-                      alt={product.name}
-                      className="w-20 h-20 object-cover rounded-lg"
-                    />
-                  )}
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-text">{product.name}</h3>
-                    <p className="text-sm text-gray-600">
-                      MOQ: {product.moq || 1} units
-                    </p>
-                  </div>
-                </div>
-              )}
+          <div className="max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar">
 
-              {/* Contact Information */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-heading font-semibold text-secondary flex items-center gap-2">
-                  <FiUser className="text-primary" />
-                  Contact Information
+            {/* Success Message */}
+            {submitted ? (
+              <div className="p-12 text-center">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="inline-block mb-4"
+                >
+                  <FiCheckCircle size={64} className="text-green-500 mx-auto" />
+                </motion.div>
+                <h3 className="text-2xl font-heading font-bold text-secondary mb-2">
+                  Inquiry Submitted!
                 </h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-text mb-2">
-                      Full Name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="buyerName"
-                      value={formData.buyerName}
-                      onChange={handleChange}
-                      required
-                      className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
-                      placeholder="Enter your full name"
-                    />
+                <p className="text-gray-600">
+                  We have received your inquiry and will contact you shortly.
+                </p>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                {/* Product Info */}
+                {product && (
+                  <div className="bg-sky/30 rounded-lg p-4 flex items-center gap-4">
+                    {product.image && (
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        className="w-20 h-20 object-cover rounded-lg"
+                      />
+                    )}
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-text">{product.name}</h3>
+                      <p className="text-sm text-gray-600">
+                        MOQ: {product.moq || 1} units
+                      </p>
+                    </div>
                   </div>
+                )}
 
-                  <div>
-                    <label className="block text-sm font-semibold text-text mb-2">
-                      Phone Number <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="tel"
-                      name="buyerPhone"
-                      value={formData.buyerPhone}
-                      onChange={handleChange}
-                      required
-                      className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
-                      placeholder="+91 9876543210"
-                    />
-                  </div>
+                {/* Contact Information */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-heading font-semibold text-secondary flex items-center gap-2">
+                    <FiUser className="text-primary" />
+                    Contact Information
+                  </h3>
 
-                  {!isCallbackRequest && (
-                    <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-text mb-2">
+                        Full Name <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="buyerName"
+                        value={formData.buyerName}
+                        onChange={handleChange}
+                        required
+                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder="Enter your full name"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-text mb-2">
+                        Phone Number <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="tel"
+                        name="buyerPhone"
+                        value={formData.buyerPhone}
+                        onChange={handleChange}
+                        required
+                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder="+91 9876543210"
+                      />
+                    </div>
+
+                    {!isCallbackRequest && (
+                      <>
+                        <div>
+                          <label className="block text-sm font-semibold text-text mb-2">
+                            Email <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="email"
+                            name="buyerEmail"
+                            value={formData.buyerEmail}
+                            onChange={handleChange}
+                            required
+                            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
+                            placeholder="your@email.com"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-semibold text-text mb-2">
+                            City <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            name="buyerCity"
+                            value={formData.buyerCity}
+                            onChange={handleChange}
+                            required
+                            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
+                            placeholder="Your city"
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    {isCallbackRequest && (
                       <div>
                         <label className="block text-sm font-semibold text-text mb-2">
-                          Email <span className="text-red-500">*</span>
+                          Email (Optional)
                         </label>
                         <input
                           type="email"
                           name="buyerEmail"
                           value={formData.buyerEmail}
                           onChange={handleChange}
-                          required
                           className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
                           placeholder="your@email.com"
                         />
                       </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Business Information - Only for Get Best Quote */}
+                {!isCallbackRequest && (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-heading font-semibold text-secondary flex items-center gap-2">
+                      <FiBriefcase className="text-primary" />
+                      Business Information
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-text mb-2">
+                          Business Type
+                        </label>
+                        <select
+                          name="businessType"
+                          value={formData.businessType}
+                          onChange={handleChange}
+                          className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
+                        >
+                          <option value="retailer">Retailer</option>
+                          <option value="wholesaler">Wholesaler</option>
+                          <option value="distributor">Distributor</option>
+                          <option value="manufacturer">Manufacturer</option>
+                          <option value="business_customer">Business Customer</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </div>
 
                       <div>
                         <label className="block text-sm font-semibold text-text mb-2">
-                          City <span className="text-red-500">*</span>
+                          Company Name (Optional)
                         </label>
                         <input
                           type="text"
-                          name="buyerCity"
-                          value={formData.buyerCity}
+                          name="companyName"
+                          value={formData.companyName}
                           onChange={handleChange}
-                          required
                           className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
-                          placeholder="Your city"
+                          placeholder="Your company name"
                         />
                       </div>
-                    </>
-                  )}
-
-                  {isCallbackRequest && (
-                    <div>
-                      <label className="block text-sm font-semibold text-text mb-2">
-                        Email (Optional)
-                      </label>
-                      <input
-                        type="email"
-                        name="buyerEmail"
-                        value={formData.buyerEmail}
-                        onChange={handleChange}
-                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
-                        placeholder="your@email.com"
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Business Information - Only for Get Best Quote */}
-              {!isCallbackRequest && (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-heading font-semibold text-secondary flex items-center gap-2">
-                    <FiBriefcase className="text-primary" />
-                    Business Information
-                  </h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-semibold text-text mb-2">
-                        Business Type
-                      </label>
-                      <select
-                        name="businessType"
-                        value={formData.businessType}
-                        onChange={handleChange}
-                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
-                      >
-                        <option value="retailer">Retailer</option>
-                        <option value="wholesaler">Wholesaler</option>
-                        <option value="distributor">Distributor</option>
-                        <option value="manufacturer">Manufacturer</option>
-                        <option value="business_customer">Business Customer</option>
-                        <option value="other">Other</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-semibold text-text mb-2">
-                        Company Name (Optional)
-                      </label>
-                      <input
-                        type="text"
-                        name="companyName"
-                        value={formData.companyName}
-                        onChange={handleChange}
-                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
-                        placeholder="Your company name"
-                      />
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Order Details - Only for Get Best Quote */}
-              {!isCallbackRequest && (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-heading font-semibold text-secondary flex items-center gap-2">
-                    <FiShoppingCart className="text-primary" />
-                    Order Details
-                  </h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Order Details - Only for Get Best Quote */}
+                {!isCallbackRequest && (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-heading font-semibold text-secondary flex items-center gap-2">
+                      <FiShoppingCart className="text-primary" />
+                      Order Details
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-text mb-2">
+                          Quantity Required <span className="text-red-500">*</span>
+                          {product && product.moq > 1 && (
+                            <span className="ml-2 text-xs text-primary">
+                              (MOQ: {product.moq})
+                            </span>
+                          )}
+                        </label>
+                        <input
+                          type="number"
+                          name="quantityRequired"
+                          value={formData.quantityRequired}
+                          onChange={handleChange}
+                          min={product?.moq || 1}
+                          required
+                          className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                      </div>
+
+                      {product?.sizes && product.sizes.length > 0 && (
+                        <div>
+                          <label className="block text-sm font-semibold text-text mb-2">
+                            Size (Optional)
+                          </label>
+                          <select
+                            name="size"
+                            value={formData.size}
+                            onChange={handleChange}
+                            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
+                          >
+                            <option value="">Select Size</option>
+                            {product.sizes.map((size) => (
+                              <option key={size} value={size}>
+                                {size}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      {product?.colors && product.colors.length > 0 && (
+                        <div>
+                          <label className="block text-sm font-semibold text-text mb-2">
+                            Color Preference (Optional)
+                          </label>
+                          <select
+                            name="color"
+                            value={formData.color}
+                            onChange={handleChange}
+                            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
+                          >
+                            <option value="">Select Color</option>
+                            {product.colors.map((color) => (
+                              <option key={color} value={color}>
+                                {color}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Additional Information - Only for Get Best Quote */}
+                {!isCallbackRequest && (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-heading font-semibold text-secondary flex items-center gap-2">
+                      <FiMessageSquare className="text-primary" />
+                      {isCustomizationRequest ? 'Customization Details' : 'Additional Information (Optional)'}
+                    </h3>
+
                     <div>
                       <label className="block text-sm font-semibold text-text mb-2">
-                        Quantity Required <span className="text-red-500">*</span>
-                        {product && product.moq > 1 && (
-                          <span className="ml-2 text-xs text-primary">
-                            (MOQ: {product.moq})
-                          </span>
+                        {isCustomizationRequest ? (
+                          <>
+                            Size Mix, Colors, Delivery City & Timeline <span className="text-red-500">*</span>
+                          </>
+                        ) : (
+                          'Special Requirements or Notes'
                         )}
                       </label>
-                      <input
-                        type="number"
-                        name="quantityRequired"
-                        value={formData.quantityRequired}
+                      <textarea
+                        name="requirements"
+                        value={formData.requirements}
                         onChange={handleChange}
-                        min={product?.moq || 1}
-                        required
+                        rows={isCustomizationRequest ? "5" : "3"}
+                        required={isCustomizationRequest}
                         className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder={
+                          isCustomizationRequest
+                            ? "Please share: Size mix, color preferences, delivery city, timeline, and any other customization requirements..."
+                            : "Any special requirements, customization needs, or additional information..."
+                        }
                       />
-                    </div>
-
-                    {product?.sizes && product.sizes.length > 0 && (
-                      <div>
-                        <label className="block text-sm font-semibold text-text mb-2">
-                          Size (Optional)
-                        </label>
-                        <select
-                          name="size"
-                          value={formData.size}
-                          onChange={handleChange}
-                          className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
-                        >
-                          <option value="">Select Size</option>
-                          {product.sizes.map((size) => (
-                            <option key={size} value={size}>
-                              {size}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-
-                    {product?.colors && product.colors.length > 0 && (
-                      <div>
-                        <label className="block text-sm font-semibold text-text mb-2">
-                          Color Preference (Optional)
-                        </label>
-                        <select
-                          name="color"
-                          value={formData.color}
-                          onChange={handleChange}
-                          className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
-                        >
-                          <option value="">Select Color</option>
-                          {product.colors.map((color) => (
-                            <option key={color} value={color}>
-                              {color}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Additional Information - Only for Get Best Quote */}
-              {!isCallbackRequest && (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-heading font-semibold text-secondary flex items-center gap-2">
-                    <FiMessageSquare className="text-primary" />
-                    {isCustomizationRequest ? 'Customization Details' : 'Additional Information (Optional)'}
-                  </h3>
-                  
-                  <div>
-                    <label className="block text-sm font-semibold text-text mb-2">
-                      {isCustomizationRequest ? (
-                        <>
-                          Size Mix, Colors, Delivery City & Timeline <span className="text-red-500">*</span>
-                        </>
-                      ) : (
-                        'Special Requirements or Notes'
+                      {isCustomizationRequest && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Please provide detailed information about your customization needs for a faster response.
+                        </p>
                       )}
-                    </label>
-                    <textarea
-                      name="requirements"
-                      value={formData.requirements}
-                      onChange={handleChange}
-                      rows={isCustomizationRequest ? "5" : "3"}
-                      required={isCustomizationRequest}
-                      className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
-                      placeholder={
-                        isCustomizationRequest 
-                          ? "Please share: Size mix, color preferences, delivery city, timeline, and any other customization requirements..."
-                          : "Any special requirements, customization needs, or additional information..."
-                      }
-                    />
-                    {isCustomizationRequest && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        Please provide detailed information about your customization needs for a faster response.
-                      </p>
-                    )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Submit Button */}
-              <div className="flex gap-4 pt-4">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="flex-1 px-6 py-3 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="flex-1 px-6 py-3 rounded-lg bg-gradient-to-r from-primary to-secondary text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading 
-                    ? 'Submitting...' 
-                    : isCallbackRequest 
-                      ? 'Request Call Back' 
-                      : isCustomizationRequest 
-                        ? 'Request Custom Quote' 
-                        : 'Get Best Quote'}
-                </button>
-              </div>
-            </form>
-          )}
+                {/* Submit Button */}
+                <div className="flex gap-4 pt-4">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="flex-1 px-6 py-3 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="flex-1 px-6 py-3 rounded-lg bg-gradient-to-r from-primary to-secondary text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading
+                      ? 'Submitting...'
+                      : isCallbackRequest
+                        ? 'Request Call Back'
+                        : isCustomizationRequest
+                          ? 'Request Custom Quote'
+                          : 'Get Best Quote'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
         </motion.div>
       </div>
     </AnimatePresence>
   );
+
+  return createPortal(modalContent, document.body);
 };
 
 export default InquiryForm;

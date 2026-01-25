@@ -8,6 +8,7 @@ import { fetchSettings } from './store/slices/settingsSlice';
 import { RfqProvider, useRfq } from './contexts/RfqContext';
 import Header from './components/Header';
 import Footer from './components/Footer';
+import ScrollToTop from './components/ScrollToTop';
 import RfqDrawer from './components/RfqDrawer';
 import BusinessDashboard from './pages/BusinessDashboard';
 import BusinessAccountSetup from './pages/BusinessAccountSetup';
@@ -40,6 +41,7 @@ function App() {
     <Provider store={store}>
       <RfqProvider>
         <Router>
+          <ScrollToTop />
           <SettingsBootstrap />
           <Toaster
             position="top-right"
