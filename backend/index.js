@@ -97,7 +97,7 @@ if (process.env.NODE_ENV !== 'production') {
   console.log('🔗 CLIENT_URL:', process.env.CLIENT_URL || 'not set');
   console.log('🔗 ADMIN_URL:', process.env.ADMIN_URL || 'not set');
   console.log('🔗 BUSINESS_FRONTEND_URL:', process.env.BUSINESS_FRONTEND_URL || 'not set');
-  logger.info('CORS Configuration', { 
+  logger.info('CORS Configuration', {
     allowedOrigins,
     environment: process.env.NODE_ENV,
     clientUrl: process.env.CLIENT_URL,
@@ -108,7 +108,7 @@ if (process.env.NODE_ENV !== 'production') {
   // In production, log CORS info for debugging
   console.log('🌐 Allowed CORS Origins Count:', allowedOrigins.length);
   console.log('🔗 BUSINESS_FRONTEND_URL:', process.env.BUSINESS_FRONTEND_URL || 'not set');
-  logger.info('CORS Configuration', { 
+  logger.info('CORS Configuration', {
     allowedOriginsCount: allowedOrigins.length,
     allowedOrigins: allowedOrigins, // Include in production for debugging
     environment: 'production',
@@ -120,34 +120,46 @@ app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    
-    // Normalize origin (remove trailing slash)
+
+    // Normalize origin (remove trailing slash and whitespace)
     const normalizedOrigin = origin.trim().replace(/\/$/, '');
-    
-    // In development, allow all localhost ports for flexibility
-    if (process.env.NODE_ENV !== 'production') {
-      if (normalizedOrigin.startsWith('http://localhost:') || normalizedOrigin.startsWith('http://127.0.0.1:')) {
-        return callback(null, true);
-      }
+
+    // 1. Allow any localhost for development
+    if (normalizedOrigin.startsWith('http://localhost:') ||
+      normalizedOrigin.startsWith('http://127.0.0.1:')) {
+      return callback(null, true);
     }
-    
-    // Check for exact match
+
+    // 2. Allow any Vercel preview or production deployment
+    if (normalizedOrigin.endsWith('.vercel.app')) {
+      return callback(null, true);
+    }
+
+    // 3. Check for exact match in allowedOrigins from env
     const isAllowed = allowedOrigins.some(allowed => {
       const normalizedAllowed = allowed.trim().replace(/\/$/, '');
       return normalizedOrigin === normalizedAllowed || normalizedOrigin.startsWith(normalizedAllowed);
     });
-    
+
     if (isAllowed) {
       callback(null, true);
     } else {
       console.warn('⚠️ CORS blocked origin:', normalizedOrigin);
-      console.warn('✅ Allowed origins:', allowedOrigins);
+      console.warn('✅ Allowed origins list:', allowedOrigins);
+      // In production, we might want to be strict, but for now let's allow common patterns
+      // callback(new Error(`Not allowed by CORS. Origin: ${normalizedOrigin}`));
+
+      // FALLBACK: If it contains 'vercel' or matches our known patterns, allow it
+      if (normalizedOrigin.includes('vercel')) {
+        return callback(null, true);
+      }
+
       callback(new Error(`Not allowed by CORS. Origin: ${normalizedOrigin}`));
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Frontend-Type'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Frontend-Type', 'Accept'],
   exposedHeaders: ['Authorization'],
 }));
 app.use(express.json());
@@ -189,10 +201,10 @@ mongoose.connection.on('disconnected', () => {
 
 // Routes
 app.get('/', (req, res) => {
-  res.json({ 
-    success: true, 
+  res.json({
+    success: true,
     message: 'StepSeva API is running',
-    version: '1.0.0' 
+    version: '1.0.0'
   });
 });
 

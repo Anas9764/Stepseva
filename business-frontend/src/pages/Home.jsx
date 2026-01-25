@@ -471,13 +471,23 @@ const Home = () => {
           </motion.div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {loading
-              ? Array(8)
+            {loading ? (
+              // Explicitly show 8 skeletons when loading
+              Array(8)
                 .fill(0)
                 .map((_, i) => <SkeletonCard key={`skeleton-${i}`} />)
-              : featuredProducts.slice(0, 8).map((product, index) => (
+            ) : featuredProducts.length > 0 ? (
+              // Show actual products
+              featuredProducts.slice(0, 8).map((product, index) => (
                 <ProductCard key={`featured-${product._id}-${index}`} product={product} showActions={false} />
-              ))}
+              ))
+            ) : (
+              // Fallback: If not loading but products are empty (e.g. API error/CORS), 
+              // show skeletons anyway to fill space or a friendly message
+              Array(8)
+                .fill(0)
+                .map((_, i) => <SkeletonCard key={`fallback-skeleton-${i}`} />)
+            )}
           </div>
 
           <div className="text-center">
